@@ -1,14 +1,16 @@
 :root {
-    --bg-color: #050505;
-    --card-bg: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --bg-color: #020202;
+    --card-bg: linear-gradient(145deg, rgba(20, 20, 20, 0.8), rgba(10, 10, 10, 0.9));
+    --glass-border: rgba(255, 255, 255, 0.08);
     --text-primary: #ffffff;
-    --text-secondary: #a0a0a0;
-    --accent-red: #E81D23;
-    --accent-green: #00e676;
-    --accent-blue: #00b4d8;
-    --accent-yellow: #ffea00;
+    --text-secondary: #888888;
+    --accent-red: #ff3e3e;
+    --accent-green: #00ff88;
+    --accent-blue: #00d4ff;
+    --accent-yellow: #ffdf00;
     --danger: #ff1744;
+    --glow-blue: rgba(0, 212, 255, 0.3);
+    --glow-green: rgba(0, 255, 136, 0.3);
 }
 
 * {
@@ -203,10 +205,12 @@ header {
     stroke-width: 8;
     stroke-linecap: round;
     transition: stroke-dashoffset 1s ease;
+    filter: drop-shadow(0 0 8px var(--glow-blue));
 }
 
 .gauge-value.health {
     stroke: var(--accent-green);
+    filter: drop-shadow(0 0 8px var(--glow-green));
 }
 
 .gauge-center {
@@ -217,9 +221,13 @@ header {
 }
 
 .gauge-center .value {
-    font-size: 2.5rem;
+    font-size: 3rem;
     font-weight: 700;
     font-family: 'Orbitron', sans-serif;
+    background: linear-gradient(to bottom, #fff, #888);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .gauge-center .unit {
@@ -293,9 +301,11 @@ header {
 }
 
 .metric-item .value {
-    font-size: 2.2rem;
+    font-size: 2.8rem;
     font-weight: 700;
     font-family: 'Orbitron', sans-serif;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
 }
 
 .metric-item .unit {
