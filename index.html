@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart BMS | EV Battery Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dark-theme">
+    <header>
+        <div class="logo-area">
+            <div class="tesla-logo"></div>
+            <h1>SMART BMS <span>v2.0</span></h1>
+        </div>
+        <div class="header-status">
+            <div id="connection-status" class="status-pill status-connected">
+                <span class="pulse"></span>
+                <span class="status-text">LIVE</span>
+            </div>
+            <div id="clock" class="time-display">00:00:00</div>
+        </div>
+    </header>
+
+    <div id="alert-banner" class="alert-banner hidden">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-content">
+            <span class="alert-title">CRITICAL FAULT DETECTED</span>
+            <span id="alert-message" class="alert-desc">Battery temperature exceeding safety limits.</span>
+        </div>
+    </div>
+
+    <main class="dashboard-container">
+        <!-- Top Section: Gauges and Main State -->
+        <section class="top-row">
+            <div class="card gauge-card glass">
+                <h3>State of Charge</h3>
+                <div class="gauge-container">
+                    <svg viewBox="0 0 100 100" class="gauge">
+                        <circle class="gauge-bg" cx="50" cy="50" r="45"></circle>
+                        <circle id="soc-gauge" class="gauge-value" cx="50" cy="50" r="45" style="stroke-dasharray: 282.7; stroke-dashoffset: 282.7;"></circle>
+                    </svg>
+                    <div class="gauge-center">
+                        <span id="soc-value" class="value">0</span><span class="unit">%</span>
+                    </div>
+                </div>
+                <div class="status-indicator">
+                    <div id="charge-status" class="indicator-dot green"></div>
+                    <span id="charge-label">Optimal Range</span>
+                </div>
+            </div>
+
+            <div class="card metrics-summary glass">
+                <div class="metric-item">
+                    <span class="label">Battery Voltage</span>
+                    <div class="value-row">
+                        <span id="voltage-value" class="value">0.0</span>
+                        <span class="unit">V</span>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <span class="label">Active Current</span>
+                    <div class="value-row">
+                        <span id="current-value" class="value">0.0</span>
+                        <span class="unit">A</span>
+                    </div>
+                </div>
+                <div class="metric-item">
+                    <span class="label">Temperature</span>
+                    <div class="value-row">
+                        <span id="temp-value" class="value">0</span>
+                        <span class="unit">°C</span>
+                    </div>
+                </div>
+            </section>
+
+            <div class="card gauge-card glass">
+                <h3>State of Health</h3>
+                <div class="gauge-container">
+                    <svg viewBox="0 0 100 100" class="gauge">
+                        <circle class="gauge-bg" cx="50" cy="50" r="45"></circle>
+                        <circle id="soh-gauge" class="gauge-value health" cx="50" cy="50" r="45" style="stroke-dasharray: 282.7; stroke-dashoffset: 282.7;"></circle>
+                    </svg>
+                    <div class="gauge-center">
+                        <span id="soh-value" class="value">0</span><span class="unit">%</span>
+                    </div>
+                </div>
+                <div class="status-indicator">
+                    <span class="label">RUL:</span>
+                    <span id="rul-value" class="text-white">0</span> <span class="unit">cycles</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Middle Section: Charts -->
+        <section class="charts-grid">
+            <div class="card chart-card glass">
+                <div class="chart-header">
+                    <h4>Voltage Trend</h4>
+                    <span class="chart-stat" id="chart-voltage-avg">Avg: 3.8V</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="voltageChart"></canvas>
+                </div>
+            </div>
+            <div class="card chart-card glass">
+                <div class="chart-header">
+                    <h4>Temperature Stability</h4>
+                    <span class="chart-stat" id="chart-temp-peak">Peak: 38°C</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </div>
+            <div class="card chart-card glass">
+                <div class="chart-header">
+                    <h4>SOC Dynamics</h4>
+                    <span class="chart-stat" id="chart-soc-drain">Drain: 0.1%/m</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="socChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bottom Section: System Status -->
+        <section class="bottom-row">
+            <div class="card control-card glass">
+                <h3>Cooling System</h3>
+                <div class="control-grid">
+                    <div class="control-item">
+                        <span class="label">Fan Status</span>
+                        <div id="fan-indicator" class="status-tag off">OFF</div>
+                    </div>
+                    <div class="control-item">
+                        <span class="label">Main Relay</span>
+                        <div id="relay-indicator" class="status-tag connected">CONNECTED</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card fault-card glass">
+                <h3>Fault Diagnostics</h3>
+                <div class="fault-list" id="fault-list">
+                    <div class="fault-item" id="fault-ov">
+                        <span class="fault-dot"></span>
+                        <span class="fault-name">Over-Voltage</span>
+                        <span class="fault-status">Normal</span>
+                    </div>
+                    <div class="fault-item" id="fault-ot">
+                        <span class="fault-dot"></span>
+                        <span class="fault-name">Over-Temp</span>
+                        <span class="fault-status">Normal</span>
+                    </div>
+                    <div class="fault-item" id="fault-oc">
+                        <span class="fault-dot"></span>
+                        <span class="fault-name">Over-Current</span>
+                        <span class="fault-status">Normal</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
