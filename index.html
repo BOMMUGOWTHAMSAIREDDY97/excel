@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,9 +8,12 @@
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Orbitron:wght@400;700&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body class="dark-theme">
     <header>
         <div class="logo-area">
@@ -41,10 +45,17 @@
                 <div class="gauge-container">
                     <svg viewBox="0 0 100 100" class="gauge">
                         <circle class="gauge-bg" cx="50" cy="50" r="45"></circle>
-                        <circle id="soc-gauge" class="gauge-value" cx="50" cy="50" r="45" style="stroke-dasharray: 282.7; stroke-dashoffset: 282.7;"></circle>
+                        <circle id="soc-gauge" class="gauge-value" cx="50" cy="50" r="45"
+                            style="stroke-dasharray: 282.7; stroke-dashoffset: 282.7;"></circle>
                     </svg>
                     <div class="gauge-center">
                         <span id="soc-value" class="value">0</span><span class="unit">%</span>
+                    </div>
+                </div>
+                <!-- Mini Battery Icon -->
+                <div class="battery-visual-container">
+                    <div class="battery-icon">
+                        <div id="battery-fill" class="battery-level" style="width: 0%;"></div>
                     </div>
                 </div>
                 <div class="status-indicator">
@@ -75,24 +86,25 @@
                         <span class="unit">°C</span>
                     </div>
                 </div>
-            </section>
+        </section>
 
-            <div class="card gauge-card glass">
-                <h3>State of Health</h3>
-                <div class="gauge-container">
-                    <svg viewBox="0 0 100 100" class="gauge">
-                        <circle class="gauge-bg" cx="50" cy="50" r="45"></circle>
-                        <circle id="soh-gauge" class="gauge-value health" cx="50" cy="50" r="45" style="stroke-dasharray: 282.7; stroke-dashoffset: 282.7;"></circle>
-                    </svg>
-                    <div class="gauge-center">
-                        <span id="soh-value" class="value">0</span><span class="unit">%</span>
-                    </div>
-                </div>
-                <div class="status-indicator">
-                    <span class="label">RUL:</span>
-                    <span id="rul-value" class="text-white">0</span> <span class="unit">cycles</span>
+        <div class="card gauge-card glass">
+            <h3>State of Health</h3>
+            <div class="gauge-container">
+                <svg viewBox="0 0 100 100" class="gauge">
+                    <circle class="gauge-bg" cx="50" cy="50" r="45"></circle>
+                    <circle id="soh-gauge" class="gauge-value health" cx="50" cy="50" r="45"
+                        style="stroke-dasharray: 282.7; stroke-dashoffset: 282.7;"></circle>
+                </svg>
+                <div class="gauge-center">
+                    <span id="soh-value" class="value">0</span><span class="unit">%</span>
                 </div>
             </div>
+            <div class="status-indicator">
+                <span class="label">RUL:</span>
+                <span id="rul-value" class="text-white">0</span> <span class="unit">cycles</span>
+            </div>
+        </div>
         </section>
 
         <!-- Middle Section: Charts -->
@@ -167,4 +179,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>

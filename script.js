@@ -150,6 +150,19 @@ function updateUI(data) {
     updateGauge('soc-gauge', data.soc);
     updateGauge('soh-gauge', data.soh);
 
+    // Battery Icon Fill
+    const batteryFill = document.getElementById('battery-fill');
+    batteryFill.style.width = `${data.soc}%`;
+
+    // Color logic for battery icon
+    if (data.soc <= 20) {
+        batteryFill.className = 'battery-level critical';
+    } else if (data.soc <= 40) {
+        batteryFill.className = 'battery-level warning';
+    } else {
+        batteryFill.className = 'battery-level';
+    }
+
     // Status Tags
     const fan = document.getElementById('fan-indicator');
     fan.textContent = data.fan_status ? 'ON' : 'OFF';
@@ -169,7 +182,7 @@ function updateGauge(id, percent) {
 // 5. Update Charts
 function updateCharts(data) {
     const timeLabel = new Date().toLocaleTimeString();
-    
+
     // Manage History
     dataHistory.voltage.push(data.voltage);
     dataHistory.temp.push(data.temp);
@@ -197,9 +210,9 @@ function updateCharts(data) {
     charts.soc.update('none');
 
     // Update stats
-    const avgVolt = dataHistory.voltage.reduce((a,b) => a+b, 0) / dataHistory.voltage.length;
+    const avgVolt = dataHistory.voltage.reduce((a, b) => a + b, 0) / dataHistory.voltage.length;
     document.getElementById('chart-voltage-avg').textContent = `Avg: ${avgVolt.toFixed(2)}V`;
-    
+
     const peakTemp = Math.max(...dataHistory.temp);
     document.getElementById('chart-temp-peak').textContent = `Peak: ${peakTemp.toFixed(1)}°C`;
 }
@@ -261,15 +274,15 @@ function simulateData() {
     simState.voltage += (Math.random() - 0.5) * 0.02;
     simState.current += (Math.random() - 0.5) * 0.5;
     simState.temp += (Math.random() - 0.5) * 0.3;
-    
+
     // Simulate Drain
     if (simState.current > 0) simState.soc -= 0.001;
-    
+
     // Bounds
     if (simState.voltage < 3.2) simState.voltage = 3.2;
     if (simState.voltage > 4.2) simState.voltage = 4.2;
     if (simState.soc < 0) simState.soc = 0;
-    
+
     // Logic: If temp > 45, fan turns on
     simState.fan_status = simState.temp > CONFIG.THRESHOLDS.TEMP_WARNING;
     if (simState.fan_status) simState.temp -= 0.1; // cooling effect

@@ -23,7 +23,7 @@ body {
     color: var(--text-primary);
     min-height: 100vh;
     overflow-x: hidden;
-    background-image: 
+    background-image:
         radial-gradient(circle at 10% 20%, rgba(0, 180, 216, 0.05) 0%, transparent 40%),
         radial-gradient(circle at 90% 80%, rgba(232, 29, 35, 0.05) 0%, transparent 40%);
 }
@@ -83,9 +83,20 @@ header {
 }
 
 @keyframes pulse-animation {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); }
-    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 230, 118, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7);
+    }
+
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(0, 230, 118, 0);
+    }
+
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(0, 230, 118, 0);
+    }
 }
 
 .time-display {
@@ -106,13 +117,22 @@ header {
 }
 
 @keyframes slide-down {
-    from { transform: translateY(-100%); }
-    to { transform: translateY(0); }
+    from {
+        transform: translateY(-100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
 }
 
-.hidden { display: none !important; }
+.hidden {
+    display: none !important;
+}
 
-.alert-message { font-weight: 600; }
+.alert-message {
+    font-weight: 600;
+}
 
 /* Main Container */
 .dashboard-container {
@@ -207,6 +227,51 @@ header {
     color: var(--text-secondary);
 }
 
+/* Battery Icon Visual */
+.battery-visual-container {
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+
+.battery-icon {
+    width: 60px;
+    height: 30px;
+    border: 2px solid var(--text-secondary);
+    border-radius: 4px;
+    position: relative;
+    padding: 2px;
+}
+
+.battery-icon::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 12px;
+    background: var(--text-secondary);
+    border-radius: 0 2px 2px 0;
+}
+
+.battery-level {
+    height: 100%;
+    background: var(--accent-green);
+    border-radius: 2px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease;
+    box-shadow: 0 0 10px rgba(0, 230, 118, 0.3);
+}
+
+.battery-level.warning {
+    background: var(--accent-yellow);
+    box-shadow: 0 0 10px rgba(255, 234, 0, 0.3);
+}
+
+.battery-level.critical {
+    background: var(--danger);
+    box-shadow: 0 0 10px rgba(255, 23, 68, 0.3);
+}
+
 /* Metrics Summary Card */
 .metrics-summary {
     display: grid;
@@ -297,9 +362,20 @@ header {
     margin-top: 10px;
 }
 
-.status-tag.on { background: rgba(0, 230, 118, 0.15); color: var(--accent-green); }
-.status-tag.off { background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); }
-.status-tag.connected { background: rgba(0, 180, 216, 0.15); color: var(--accent-blue); }
+.status-tag.on {
+    background: rgba(0, 230, 118, 0.15);
+    color: var(--accent-green);
+}
+
+.status-tag.off {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+}
+
+.status-tag.connected {
+    background: rgba(0, 180, 216, 0.15);
+    color: var(--accent-blue);
+}
 
 .fault-list {
     display: flex;
@@ -324,17 +400,35 @@ header {
     background: var(--accent-green);
 }
 
-.fault-item.warning .fault-dot { background: var(--accent-yellow); box-shadow: 0 0 10px var(--accent-yellow); }
-.fault-item.critical .fault-dot { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+.fault-item.warning .fault-dot {
+    background: var(--accent-yellow);
+    box-shadow: 0 0 10px var(--accent-yellow);
+}
 
-.fault-name { flex-grow: 1; font-size: 0.9rem; }
-.fault-status { font-size: 0.8rem; color: var(--text-secondary); }
+.fault-item.critical .fault-dot {
+    background: var(--danger);
+    box-shadow: 0 0 10px var(--danger);
+}
+
+.fault-name {
+    flex-grow: 1;
+    font-size: 0.9rem;
+}
+
+.fault-status {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
 
 /* Responsive */
 @media (max-width: 1200px) {
-    .top-row, .charts-grid, .bottom-row {
+
+    .top-row,
+    .charts-grid,
+    .bottom-row {
         grid-template-columns: 1fr;
     }
+
     .metrics-summary {
         grid-template-columns: repeat(3, 1fr);
     }
@@ -345,6 +439,7 @@ header {
         grid-template-columns: 1fr;
         gap: 30px;
     }
+
     header {
         flex-direction: column;
         height: auto;
