@@ -1,291 +1,258 @@
-// Configuration & Mock Data
 const CONFIG = {
-    POLL_INTERVAL: 1000,
-    CHART_POINTS: 20,
+    POLL_INTERVAL: 1500,
+    HISTORY_LEN: 25,
     THRESHOLDS: {
-        TEMP_WARNING: 45,
-        TEMP_CRITICAL: 55,
-        VOLT_CRITICAL: 3.0,
-        CURR_WARNING: 10.0
+        TEMP_WARM: 42,
+        TEMP_CRIT: 52,
+        VOLT_LOW: 3.2,
+        CURR_HIGH: 8.0
     }
 };
 
 let charts = {};
-let dataHistory = {
-    voltage: [],
-    temp: [],
-    soc: [],
-    labels: []
+let gauges = {};
+let history = { v: [], c: [], t: [], s: [], l: [] };
+
+// Simulated State
+let sim = {
+    voltage: 3.9, current: 2.1, temp: 38, soc: 82, soh: 94, rul: 260, fan: false, relay: true
 };
 
-// Simulation State
-let simState = {
-    voltage: 3.8,
-    current: 1.5,
-    temp: 35,
-    soc: 85,
-    soh: 94,
-    rul: 280,
-    fan_status: false,
-    relay_status: true
-};
-
-// Initialize Dashboard
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize
+window.onload = () => {
     initCharts();
+    initSpeedos();
     startClock();
-    startDataLoop();
-});
+    mainLoop();
+};
 
-// 1. Clock functionality
 function startClock() {
-    const clockEl = document.getElementById('clock');
     setInterval(() => {
-        const now = new Date();
-        clockEl.textContent = now.toLocaleTimeString();
+        document.getElementById('clock').innerText = new Date().toLocaleTimeString();
     }, 1000);
 }
 
-// 2. chart.js Initialization
+// 1. Chart.js Setup
 function initCharts() {
-    const chartDefaults = {
+    const common = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-            y: {
-                grid: { color: 'rgba(255,255,255,0.05)' },
-                ticks: { color: '#a0a0a0', font: { size: 10 } }
-            },
-            x: {
-                grid: { display: false },
-                ticks: { display: false }
-            }
+            x: { display: false },
+            y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#555', font: { size: 9 } } }
         },
-        elements: {
-            line: { tension: 0.4, borderWidth: 2, fill: true },
-            point: { radius: 0 }
-        }
+        elements: { line: { tension: 0.4, borderWidth: 2, fill: true }, point: { radius: 0 } }
     };
 
-    // Voltage Chart
-    charts.voltage = new Chart(document.getElementById('voltageChart'), {
+    charts.v = new Chart(document.getElementById('chart-v'), {
         type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                data: [],
-                borderColor: '#00b4d8',
-                backgroundColor: 'rgba(0, 180, 216, 0.1)'
-            }]
-        },
-        options: chartDefaults
+        data: { labels: [], datasets: [{ borderColor: '#00f2ff', backgroundColor: 'rgba(0, 242, 255, 0.05)', data: [] }] },
+        options: common
     });
-
-    // Temp Chart
-    charts.temp = new Chart(document.getElementById('tempChart'), {
+    charts.c = new Chart(document.getElementById('chart-c'), {
         type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                data: [],
-                borderColor: '#ff1744',
-                backgroundColor: 'rgba(255, 23, 68, 0.1)'
-            }]
-        },
-        options: chartDefaults
+        data: { labels: [], datasets: [{ borderColor: '#ffdb29', backgroundColor: 'rgba(255, 219, 41, 0.05)', data: [] }] },
+        options: common
     });
-
-    // SOC Chart
-    charts.soc = new Chart(document.getElementById('socChart'), {
+    charts.t = new Chart(document.getElementById('chart-t'), {
         type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                data: [],
-                borderColor: '#00e676',
-                backgroundColor: 'rgba(0, 230, 118, 0.1)'
-            }]
-        },
-        options: chartDefaults
+        data: { labels: [], datasets: [{ borderColor: '#ff3c3c', backgroundColor: 'rgba(255, 60, 60, 0.05)', data: [] }] },
+        options: common
+    });
+    charts.s = new Chart(document.getElementById('chart-s'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ borderColor: '#00ff8c', backgroundColor: 'rgba(0, 255, 140, 0.05)', data: [] }] },
+        options: common
     });
 }
 
-// 3. Data Loop (Fetch or Simulate)
-async function startDataLoop() {
+// 2. Custom Canvas Speedometers
+function initSpeedos() {
+    gauges.v = { ctx: document.getElementById('gauge-voltage').getContext('2d'), val: 0, max: 4.5 };
+    gauges.t = { ctx: document.getElementById('gauge-temp').getContext('2d'), val: 0, max: 80 };
+}
+
+function drawSpeedo(config, value, color) {
+    const { ctx, max } = config;
+    ctx.clearRect(0, 0, 300, 300);
+    const centerX = 70; const centerY = 65; const radius = 55;
+
+    // Track (Back)
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, Math.PI, 2 * Math.PI);
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 10;
+    ctx.stroke();
+
+    // Fill
+    const percent = Math.min(value / max, 1);
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, Math.PI, Math.PI + (percent * Math.PI));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 10;
+    ctx.stroke();
+}
+
+// 3. Main Data Loop
+async function mainLoop() {
     setInterval(async () => {
-        let batteryData;
+        let data;
         try {
-            const response = await fetch('/api/battery');
-            if (response.ok) {
-                batteryData = await response.json();
-                document.getElementById('connection-status').className = 'status-pill status-connected';
-            } else {
-                throw new Error('API Offline');
-            }
-        } catch (error) {
-            // Fallback to simulation
-            batteryData = simulateData();
-            document.getElementById('connection-status').className = 'status-pill status-simulated';
-            document.querySelector('.status-text').textContent = 'SIMULATED';
+            const res = await fetch('/api/battery');
+            if (res.ok) {
+                data = await res.json();
+                document.getElementById('conn-text').innerText = "LIVE STREAMING";
+                document.getElementById('connection-status').className = "status-pill connected";
+            } else throw Error();
+        } catch {
+            data = simulate();
+            document.getElementById('conn-text').innerText = "EMULATED STREAM";
+            document.getElementById('connection-status').className = "status-pill simulated";
         }
 
-        updateUI(batteryData);
-        updateCharts(batteryData);
-        checkFaults(batteryData);
+        updateUI(data);
+        updateHistory(data);
+        checkAlerts(data);
     }, CONFIG.POLL_INTERVAL);
 }
 
-// 4. Update UI Elements
+function simulate() {
+    sim.voltage += (Math.random() - 0.5) * 0.05;
+    sim.current = 1.0 + Math.random() * 2.5;
+    sim.temp += (Math.random() - 0.5) * 0.4;
+    sim.soc -= 0.01;
+    if (sim.temp > 45) { sim.fan = true; sim.temp -= 0.6; } else sim.fan = false;
+    if (sim.voltage < 3.3) sim.voltage = 3.3;
+    return sim;
+}
+
+// 4. Update Visuals
 function updateUI(data) {
-    // Basic Metrics
-    document.getElementById('voltage-value').textContent = data.voltage.toFixed(2);
-    document.getElementById('current-value').textContent = data.current.toFixed(1);
-    document.getElementById('temp-value').textContent = Math.round(data.temp);
-    document.getElementById('soc-value').textContent = Math.round(data.soc);
-    document.getElementById('soh-value').textContent = Math.round(data.soh);
-    document.getElementById('rul-value').textContent = data.rul;
+    // Master Battery
+    const fill = document.getElementById('battery-fill-master');
+    fill.style.height = `${data.soc}%`;
+    document.getElementById('soc-value-master').innerText = Math.round(data.soc);
 
-    // Gauges (282.7 is Circumference of 45r circle)
-    updateGauge('soc-gauge', data.soc);
-    updateGauge('soh-gauge', data.soh);
+    if (data.soc < 20) fill.style.backgroundColor = 'var(--accent-red)';
+    else if (data.soc < 45) fill.style.backgroundColor = 'var(--accent-yellow)';
+    else fill.style.backgroundColor = 'var(--accent-green)';
 
-    // Battery Icon Fill
-    const batteryFill = document.getElementById('battery-fill');
-    batteryFill.style.width = `${data.soc}%`;
+    // Stats
+    document.getElementById('stat-current').innerText = data.current.toFixed(2);
+    document.getElementById('stat-power').innerText = (data.voltage * data.current).toFixed(2);
+    document.getElementById('stat-temp').innerText = Math.round(data.temp);
+    document.getElementById('rul-val').innerText = data.rul;
 
-    // Color logic for battery icon
-    if (data.soc <= 20) {
-        batteryFill.className = 'battery-level critical';
-    } else if (data.soc <= 40) {
-        batteryFill.className = 'battery-level warning';
+    // Gauges
+    document.getElementById('val-v').innerText = data.voltage.toFixed(2);
+    document.getElementById('val-t').innerText = Math.round(data.temp);
+    drawSpeedo(gauges.v, data.voltage, '#00f2ff');
+    drawSpeedo(gauges.t, data.temp, data.temp > 50 ? '#ff3c3c' : '#ffdb29');
+
+    // Controls
+    const fan = document.getElementById('fan-icon');
+    if (data.fan_status || data.fan) {
+        fan.classList.add('rotating');
+        document.getElementById('fan-status').innerText = "ACTIVE-COOL";
     } else {
-        batteryFill.className = 'battery-level';
+        fan.classList.remove('rotating');
+        document.getElementById('fan-status').innerText = "STDBY";
     }
 
-    // Status Tags
-    const fan = document.getElementById('fan-indicator');
-    fan.textContent = data.fan_status ? 'ON' : 'OFF';
-    fan.className = `status-tag ${data.fan_status ? 'on' : 'off'}`;
-
-    const relay = document.getElementById('relay-indicator');
-    relay.textContent = data.relay_status ? 'CONNECTED' : 'DISCONNECTED';
-    relay.className = `status-tag ${data.relay_status ? 'connected' : 'off'}`;
-}
-
-function updateGauge(id, percent) {
-    const gauge = document.getElementById(id);
-    const offset = 282.7 - (percent / 100 * 282.7);
-    gauge.style.strokeDashoffset = offset;
-}
-
-// 5. Update Charts
-function updateCharts(data) {
-    const timeLabel = new Date().toLocaleTimeString();
-
-    // Manage History
-    dataHistory.voltage.push(data.voltage);
-    dataHistory.temp.push(data.temp);
-    dataHistory.soc.push(data.soc);
-    dataHistory.labels.push(timeLabel);
-
-    if (dataHistory.labels.length > CONFIG.CHART_POINTS) {
-        dataHistory.voltage.shift();
-        dataHistory.temp.shift();
-        dataHistory.soc.shift();
-        dataHistory.labels.shift();
+    const relay = document.getElementById('relay-light');
+    const relayTxt = document.getElementById('relay-status');
+    if (data.relay_status) {
+        relay.className = "status-dot dot-on";
+        relayTxt.innerText = "ENGAGED";
+    } else {
+        relay.className = "status-dot";
+        relayTxt.innerText = "OPEN";
     }
 
-    // Refresh charts
-    charts.voltage.data.labels = dataHistory.labels;
-    charts.voltage.data.datasets[0].data = dataHistory.voltage;
-    charts.voltage.update('none');
+    // EV Car Highlight
+    const carImg = document.getElementById('ev-car-img');
+    const glow = document.getElementById('battery-glow');
+    if (data.soh < 85) glow.style.background = 'var(--accent-yellow)';
+    else if (data.soh < 75) glow.style.background = 'var(--accent-red)';
+    else glow.style.background = 'var(--accent-green)';
 
-    charts.temp.data.labels = dataHistory.labels;
-    charts.temp.data.datasets[0].data = dataHistory.temp;
-    charts.temp.update('none');
-
-    charts.soc.data.labels = dataHistory.labels;
-    charts.soc.data.datasets[0].data = dataHistory.soc;
-    charts.soc.update('none');
-
-    // Update stats
-    const avgVolt = dataHistory.voltage.reduce((a, b) => a + b, 0) / dataHistory.voltage.length;
-    document.getElementById('chart-voltage-avg').textContent = `Avg: ${avgVolt.toFixed(2)}V`;
-
-    const peakTemp = Math.max(...dataHistory.temp);
-    document.getElementById('chart-temp-peak').textContent = `Peak: ${peakTemp.toFixed(1)}°C`;
+    document.getElementById('soh-bar').style.width = `${data.soh}%`;
+    document.getElementById('soh-percent-label').innerText = `${data.soh}%`;
 }
 
-// 6. Fault & Threshold Logic
-function checkFaults(data) {
-    const alerts = [];
+function updateHistory(data) {
+    const time = new Date().toLocaleTimeString();
+    history.l.push(time);
+    history.v.push(data.voltage);
+    history.c.push(data.current);
+    history.t.push(data.temp);
+    history.s.push(data.soc);
+
+    if (history.l.length > CONFIG.HISTORY_LEN) {
+        Object.keys(history).forEach(k => history[k].shift());
+    }
+
+    charts.v.data.labels = history.l;
+    charts.v.data.datasets[0].data = history.v;
+    charts.v.update('none');
+
+    charts.c.data.labels = history.l;
+    charts.c.data.datasets[0].data = history.c;
+    charts.c.update('none');
+
+    charts.t.data.labels = history.l;
+    charts.t.data.datasets[0].data = history.t;
+    charts.t.update('none');
+
+    charts.s.data.labels = history.l;
+    charts.s.data.datasets[0].data = history.s;
+    charts.s.update('none');
+
+    // Summary Stats in Chart headers
+    document.getElementById('v-avg').innerText = `Avg: ${(history.v.reduce((a, b) => a + b) / history.v.length).toFixed(2)}V`;
+    document.getElementById('c-peak').innerText = `Peak: ${Math.max(...history.c).toFixed(1)}A`;
+    document.getElementById('t-max').innerText = `Max: ${Math.round(Math.max(...history.t))}°C`;
+}
+
+// 5. Alert Engine
+function checkAlerts(data) {
     const banner = document.getElementById('alert-banner');
-    const alertMsg = document.getElementById('alert-message');
+    const title = document.getElementById('fault-title');
+    const detail = document.getElementById('fault-detail');
+    const logs = document.getElementById('fault-log');
 
-    // Over Temp
-    const faultOt = document.getElementById('fault-ot');
-    if (data.temp > CONFIG.THRESHOLDS.TEMP_CRITICAL) {
-        faultOt.className = 'fault-item critical';
-        faultOt.querySelector('.fault-status').textContent = 'CRITICAL';
-        alerts.push('CRITICAL overheat: Fan active.');
-    } else if (data.temp > CONFIG.THRESHOLDS.TEMP_WARNING) {
-        faultOt.className = 'fault-item warning';
-        faultOt.querySelector('.fault-status').textContent = 'WARNING';
-        alerts.push('High Temperature Warning.');
-    } else {
-        faultOt.className = 'fault-item';
-        faultOt.querySelector('.fault-status').textContent = 'Normal';
+    let active = false;
+    let msg = "";
+    let lvl = "system";
+
+    if (data.temp > CONFIG.THRESHOLDS.TEMP_CRIT) {
+        active = true; msg = "THERMAL RUNAWAY RISK"; detail.innerText = "Critical cell temperature detected. Cooling Max!";
+        lvl = "crit";
+    } else if (data.voltage < CONFIG.THRESHOLDS.VOLT_LOW) {
+        active = true; msg = "VOLTAGE DEPLETION"; detail.innerText = "Power source below safe threshold.";
+        lvl = "warn";
     }
 
-    // Over Voltage (Low Voltage check)
-    const faultOv = document.getElementById('fault-ov');
-    if (data.voltage < CONFIG.THRESHOLDS.VOLT_CRITICAL) {
-        faultOv.className = 'fault-item critical';
-        faultOv.querySelector('.fault-status').textContent = 'LOW VOLTAGE';
-        alerts.push('Voltage below safety threshold!');
-    } else {
-        faultOv.className = 'fault-item';
-        faultOv.querySelector('.fault-status').textContent = 'Normal';
-    }
-
-    // Over Current
-    const faultOc = document.getElementById('fault-oc');
-    if (data.current > CONFIG.THRESHOLDS.CURR_WARNING) {
-        faultOc.className = 'fault-item warning';
-        faultOc.querySelector('.fault-status').textContent = 'HIGH LOAD';
-    } else {
-        faultOc.className = 'fault-item';
-        faultOc.querySelector('.fault-status').textContent = 'Normal';
-    }
-
-    // Display Alert Banner
-    if (alerts.length > 0) {
+    if (active) {
         banner.classList.remove('hidden');
-        alertMsg.textContent = alerts[0];
+        title.innerText = msg;
+        document.body.classList.add('critical-pulse-active');
+        logEvent(msg, lvl);
     } else {
         banner.classList.add('hidden');
+        document.body.classList.remove('critical-pulse-active');
     }
 }
 
-// 7. Simulation Engine
-function simulateData() {
-    // Fluctuations
-    simState.voltage += (Math.random() - 0.5) * 0.02;
-    simState.current += (Math.random() - 0.5) * 0.5;
-    simState.temp += (Math.random() - 0.5) * 0.3;
+function logEvent(msg, type) {
+    const log = document.getElementById('fault-log');
+    const time = new Date().toLocaleTimeString();
+    if (log.lastChild && log.lastChild.innerText.includes(msg)) return; // Don't spam
 
-    // Simulate Drain
-    if (simState.current > 0) simState.soc -= 0.001;
-
-    // Bounds
-    if (simState.voltage < 3.2) simState.voltage = 3.2;
-    if (simState.voltage > 4.2) simState.voltage = 4.2;
-    if (simState.soc < 0) simState.soc = 0;
-
-    // Logic: If temp > 45, fan turns on
-    simState.fan_status = simState.temp > CONFIG.THRESHOLDS.TEMP_WARNING;
-    if (simState.fan_status) simState.temp -= 0.1; // cooling effect
-
-    return simState;
+    const div = document.createElement('div');
+    div.className = `log-entry ${type}`;
+    div.innerText = `[${time}] ${msg}`;
+    log.prepend(div);
+    if (log.children.length > 20) log.removeChild(log.lastChild);
 }
