@@ -109,6 +109,27 @@ header {
     color: var(--accent-blue);
     font-size: 1.2rem;
     text-shadow: 0 0 10px var(--accent-blue);
+    margin-right: 20px;
+}
+
+.btn-dataset {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    color: var(--accent-blue);
+    text-decoration: none;
+    letter-spacing: 1.5px;
+    border-color: var(--accent-blue);
+    background: rgba(0, 242, 255, 0.05);
+}
+
+.btn-dataset:hover {
+    background: rgba(0, 242, 255, 0.15);
+    box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+    transform: translateY(-2px);
 }
 
 .dashboard-shell {
@@ -436,6 +457,64 @@ h3 {
     font-size: 0.7rem;
     color: var(--accent-blue);
     font-family: 'Orbitron', sans-serif;
+}
+
+/* Data Stream Table */
+.data-table-section {
+    margin-bottom: 20px;
+}
+
+.table-container {
+    max-height: 250px;
+    overflow-y: auto;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.table-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: var(--text-secondary);
+    border-radius: 3px;
+}
+
+#data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.85rem;
+}
+
+#data-table th,
+#data-table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+#data-table th {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--accent-blue);
+    font-size: 0.7rem;
+    position: sticky;
+    top: 0;
+    background: rgba(10, 12, 16, 0.95);
+    z-index: 10;
+    letter-spacing: 1px;
+}
+
+#data-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+#data-table tbody tr:hover {
+    background: rgba(0, 242, 255, 0.1);
+}
+
+#data-table tbody tr td:first-child {
+    color: var(--text-secondary);
+    font-family: 'monospace';
 }
 
 /* Fault Log */

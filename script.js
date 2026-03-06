@@ -213,6 +213,23 @@ function updateHistory(data) {
     document.getElementById('v-avg').innerText = `Avg: ${(history.v.reduce((a, b) => a + b) / history.v.length).toFixed(2)}V`;
     document.getElementById('c-peak').innerText = `Peak: ${Math.max(...history.c).toFixed(1)}A`;
     document.getElementById('t-max').innerText = `Max: ${Math.round(Math.max(...history.t))}°C`;
+
+    // Populate Data Table
+    const tbody = document.getElementById('data-tbody');
+    if (tbody) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${time}</td>
+            <td>${data.voltage.toFixed(2)}</td>
+            <td>${data.current.toFixed(2)}</td>
+            <td>${data.temp.toFixed(1)}</td>
+            <td>${data.soc.toFixed(1)}</td>
+        `;
+        tbody.prepend(tr);
+        if (tbody.children.length > 50) {
+            tbody.removeChild(tbody.lastChild);
+        }
+    }
 }
 
 // 5. Alert Engine

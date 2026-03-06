@@ -30,6 +30,9 @@
                 <span id="conn-text">LIVE STREAMING</span>
             </div>
             <div id="clock" class="digital-time">00:00:00</div>
+            <a href="ev_battery_dataset.csv" download="ev_battery_dataset.csv" class="btn-dataset glass">
+                <span class="icon">📊</span> DATASET
+            </a>
         </div>
     </header>
 
@@ -181,6 +184,27 @@
                 <div class="canvas-wrap">
                     <canvas id="chart-s"></canvas>
                 </div>
+            </div>
+        </section>
+
+        <!-- Data Stream Table -->
+        <section class="data-table-section glass">
+            <h3>LIVE DATA STREAM</h3>
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>TIME</th>
+                            <th>VOLTAGE (V)</th>
+                            <th>CURRENT (A)</th>
+                            <th>TEMP (°C)</th>
+                            <th>SOC (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-tbody">
+                        <!-- Rows will be populated dynamically -->
+                    </tbody>
+                </table>
             </div>
         </section>
 
