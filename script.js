@@ -12,7 +12,7 @@ const CONFIG = {
 // Supabase Configuration - REPLACE WITH YOUR ACTUAL CREDENTIALS
 const SUPABASE_URL = 'https://jmknmbgssiztxzdttsmp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impta25tYmdzc2l6dHh6ZHR0c21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0OTc0MjIsImV4cCI6MjA4OTA3MzQyMn0.EViFTAl-lpeaz3RkjNefe4aKQvRto9AqINPvLI_G7nc';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let charts = {};
 let gauges = {};
@@ -102,7 +102,7 @@ function drawSpeedo(config, value, color) {
 // 3. Supabase Integration
 async function initSupabase() {
     // 1. Fetch initial state (last 25 records to populate charts)
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('battery_data')
         .select('*')
         .order('created_at', { ascending: false })
@@ -133,7 +133,7 @@ async function initSupabase() {
     }
 
     // 2. Subscribe to real-time changes
-    supabase
+    supabaseClient
         .channel('battery-updates')
         .on(
             'postgres_changes',
