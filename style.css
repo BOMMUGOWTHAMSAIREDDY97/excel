@@ -112,25 +112,7 @@ header {
     margin-right: 20px;
 }
 
-.btn-dataset {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.7rem;
-    color: var(--accent-blue);
-    text-decoration: none;
-    letter-spacing: 1.5px;
-    border-color: var(--accent-blue);
-    background: rgba(0, 242, 255, 0.05);
-}
 
-.btn-dataset:hover {
-    background: rgba(0, 242, 255, 0.15);
-    box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
-    transform: translateY(-2px);
-}
 
 .dashboard-shell {
     position: relative;
