@@ -326,7 +326,7 @@ function checkAlerts(data) {
 function logEvent(msg, type) {
     const log = document.getElementById('fault-log');
     const time = new Date().toLocaleTimeString();
-    if (log.lastChild && log.lastChild.innerText.includes(msg)) return; // Don't spam
+    if (log.lastElementChild && log.lastElementChild.innerText.includes(msg)) return; // Don't spam
 
     const div = document.createElement('div');
     div.className = `log-entry ${type}`;
