@@ -205,27 +205,30 @@ async function initSupabase() {
 
 // Map database column names to our app's internal names
 function mapSupabaseData(row) {
-    // Handle both 'temperature' and 'temp' column names carefully with zero check
-    const tempVal = (row.temperature !== undefined && row.temperature !== null) ? row.temperature : 
-                   (row.temp !== undefined && row.temp !== null) ? row.temp : 25;
+    // Helper: safely get a number from row, handling both null and undefined
+    const safeNum = (val, fallback = 0) => (val !== undefined && val !== null) ? Number(val) : fallback;
 
-    const voltVal = row.voltage !== undefined ? row.voltage : (row.volt !== undefined ? row.volt : 0);
-    const currVal = row.current !== undefined ? row.current : (row.curr !== undefined ? row.curr : 0);
+    // Handle both 'temperature' and 'temp' column names
+    let tempVal = (row.temperature !== undefined && row.temperature !== null)
+        ? Number(row.temperature)
+        : (row.temp !== undefined && row.temp !== null)
+            ? Number(row.temp)
+            : 25;
 
     const isFault = (tempVal === -127 || tempVal < -50);
-    if (isFault) tempVal = 0; 
+    if (isFault) tempVal = 0; // Don't show -127 in UI
 
     return {
-        voltage: voltVal,
-        current: currVal,
-        temp: tempVal,
+        voltage:      safeNum(row.voltage, 0),
+        current:      safeNum(row.current, 0),
+        temp:         tempVal,
         sensor_fault: isFault,
-        soc: row.soc !== undefined ? row.soc : 0,
-        soh: row.soh !== undefined ? row.soh : 100,
-        rul: row.rul !== undefined ? row.rul : 250,
-        fan: tempVal > 45,
-        relay_status: row.relay_status !== undefined ? row.relay_status : true,
-        created_at: row.created_at
+        soc:          safeNum(row.soc, 0),
+        soh:          safeNum(row.soh, 100),
+        rul:          safeNum(row.rul, 250),
+        fan:          tempVal > 45,
+        relay_status: row.relay_status !== undefined && row.relay_status !== null ? row.relay_status : true,
+        created_at:   row.created_at
     };
 }
 
@@ -254,26 +257,35 @@ function simulate() {
 
 // 4. Update Visuals
 function updateUI(data) {
+  try {
+    // Guard: ensure numeric fields are numbers
+    const volt = Number(data.voltage) || 0;
+    const curr = Number(data.current) || 0;
+    const temp = Number(data.temp)    || 0;
+    const soc  = Number(data.soc)     || 0;
+    const soh  = Number(data.soh)     || 0;
+    const rul  = data.rul !== undefined ? data.rul : 250;
+
     // Master Battery
     const fill = document.getElementById('battery-fill-master');
-    fill.style.height = `${data.soc}%`;
-    document.getElementById('soc-value-master').innerText = Math.round(data.soc);
+    fill.style.height = `${soc}%`;
+    document.getElementById('soc-value-master').innerText = Math.round(soc);
 
-    if (data.soc < 20) fill.style.backgroundColor = 'var(--accent-red)';
-    else if (data.soc < 45) fill.style.backgroundColor = 'var(--accent-yellow)';
+    if (soc < 20) fill.style.backgroundColor = 'var(--accent-red)';
+    else if (soc < 45) fill.style.backgroundColor = 'var(--accent-yellow)';
     else fill.style.backgroundColor = 'var(--accent-green)';
 
     // Stats
-    document.getElementById('stat-current').innerText = data.current.toFixed(2);
-    document.getElementById('stat-power').innerText = (data.voltage * data.current).toFixed(2);
-    document.getElementById('stat-temp').innerText = Math.round(data.temp);
-    document.getElementById('rul-val').innerText = data.rul;
+    document.getElementById('stat-current').innerText = curr.toFixed(2);
+    document.getElementById('stat-power').innerText   = (volt * curr).toFixed(2);
+    document.getElementById('stat-temp').innerText    = Math.round(temp);
+    document.getElementById('rul-val').innerText      = rul;
 
     // Gauges
-    document.getElementById('val-v').innerText = data.voltage.toFixed(2);
-    document.getElementById('val-t').innerText = Math.round(data.temp);
-    drawSpeedo(gauges.v, data.voltage, '#00f2ff');
-    drawSpeedo(gauges.t, data.temp, data.temp > 50 ? '#ff3c3c' : '#ffdb29');
+    document.getElementById('val-v').innerText = volt.toFixed(2);
+    document.getElementById('val-t').innerText = Math.round(temp);
+    drawSpeedo(gauges.v, volt, '#00f2ff');
+    drawSpeedo(gauges.t, temp, temp > 50 ? '#ff3c3c' : '#ffdb29');
 
     // Controls
     const fan = document.getElementById('fan-icon');
@@ -296,14 +308,16 @@ function updateUI(data) {
     }
 
     // EV Car Highlight
-    const carImg = document.getElementById('ev-car-img');
     const glow = document.getElementById('battery-glow');
-    if (data.soh < 85) glow.style.background = 'var(--accent-yellow)';
-    else if (data.soh < 75) glow.style.background = 'var(--accent-red)';
+    if (soh < 75) glow.style.background = 'var(--accent-red)';
+    else if (soh < 85) glow.style.background = 'var(--accent-yellow)';
     else glow.style.background = 'var(--accent-green)';
 
-    document.getElementById('soh-bar').style.width = `${data.soh}%`;
-    document.getElementById('soh-percent-label').innerText = `${data.soh}%`;
+    document.getElementById('soh-bar').style.width = `${soh}%`;
+    document.getElementById('soh-percent-label').innerText = `${soh}%`;
+  } catch(e) {
+    console.error('[updateUI] Error rendering data:', e, 'data was:', data);
+  }
 }
 
 function updateHistory(data) {
