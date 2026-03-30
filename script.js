@@ -130,48 +130,56 @@ async function initSupabase() {
         return;
     }
 
-    // 1. Fetch initial state (last 25 records to populate charts)
-    logEvent('INITIALIZING DATABASE LINK...', 'system');
+    // 1. Fetch initial state with timeout
+    logEvent('SYNCING WITH CLOUD STORAGE...', 'system');
+    document.getElementById('conn-text').innerText = "SYNCING...";
     
+    // Set a timeout to prevent hanging if connection is slow
+    const syncTimeout = setTimeout(() => {
+        if (document.getElementById('conn-text').innerText === "SYNCING...") {
+            logEvent('SYNC TIMEOUT - CHECKING BRIDGE...', 'warn');
+            document.getElementById('conn-text').innerText = "BRIDGE FAULT";
+            mainLoopFallback();
+        }
+    }, 5000);
+
     const { data, error } = await supabaseClient
         .from('battery_data')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(CONFIG.HISTORY_LEN);
 
+    clearTimeout(syncTimeout);
+
     if (error) {
         if (error.code === 'PGRST116' || error.message.includes('not found')) {
-            console.warn('Table battery_data not found. Run setup.sql in Supabase Dashboard.');
-            logEvent('DB SETUP REQUIRED (Check Supabase)', 'warn');
+            logEvent('DB SETUP MISSING (See setup.sql)', 'warn');
         } else {
-            console.error('Supabase fetch error:', error);
-            logEvent('DB CONNECTION ERROR: ' + error.message, 'crit');
+            logEvent('DB LINK FAILED: ' + error.message, 'crit');
         }
-        // Fallback to simulation if DB fails initially
         mainLoopFallback();
         return;
     }
 
     if (data && data.length > 0) {
-        logEvent('DATABASE LINK ACTIVE', 'success');
+        logEvent('CLOUD LINK ESTABLISHED', 'success');
         document.getElementById('conn-text').innerText = "LIVE (SUPABASE)";
         document.getElementById('connection-status').className = "status-pill connected";
 
-        // Populate history from initial fetch (reverse to get chronological order)
-        data.reverse().forEach(row => {
-            const mappedData = mapSupabaseData(row);
-            updateHistory(mappedData);
-        });
+        const latestVal = data[0];
+        if (latestVal.voltage === 0 && latestVal.current === 0) {
+            logEvent('NOTICE: RAW DATA READS 0.0', 'warn');
+        }
 
-        // Update UI with the latest record
+        // Populate history
+        data.reverse().forEach(row => updateHistory(mapSupabaseData(row)));
+        
         const latest = mapSupabaseData(data[data.length - 1]);
         updateUI(latest);
         checkAlerts(latest);
     } else {
-        logEvent('TABLE EMPTY - WAITING FOR DATA...', 'warn');
-        document.getElementById('conn-text').innerText = "LINK OK - EMPTY DB";
-        // If table exists but is empty, we start simulation so the user doesn't see 0.00
-        // until their ESP32 starts sending real data.
+        logEvent('REMOTE TABLE EMPTY - WAITING FOR ESP32...', 'warn');
+        document.getElementById('conn-text').innerText = "WAITING FOR DATA";
         mainLoopFallback();
     }
 
@@ -201,12 +209,15 @@ function mapSupabaseData(row) {
     const tempVal = (row.temperature !== undefined && row.temperature !== null) ? row.temperature : 
                    (row.temp !== undefined && row.temp !== null) ? row.temp : 25;
 
+    const voltVal = row.voltage !== undefined ? row.voltage : (row.volt !== undefined ? row.volt : 0);
+    const currVal = row.current !== undefined ? row.current : (row.curr !== undefined ? row.curr : 0);
+
     const isFault = (tempVal === -127 || tempVal < -50);
-    if (isFault) tempVal = 0; // Don't show -127 in UI big numbers
+    if (isFault) tempVal = 0; 
 
     return {
-        voltage: row.voltage !== undefined ? row.voltage : 0,
-        current: row.current !== undefined ? row.current : 0,
+        voltage: voltVal,
+        current: currVal,
         temp: tempVal,
         sensor_fault: isFault,
         soc: row.soc !== undefined ? row.soc : 0,
