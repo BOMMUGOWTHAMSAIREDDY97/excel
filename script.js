@@ -192,7 +192,7 @@ function simulate() {
 function updateUI(data) {
     // Master Battery
     const fill = document.getElementById('battery-fill-master');
-    fill.style.height = `${data.soc}%`;
+    fill.style.height = ${ data.soc }%;
     document.getElementById('soc-value-master').innerText = Math.round(data.soc);
 
     if (data.soc < 20) fill.style.backgroundColor = 'var(--accent-red)';
@@ -238,8 +238,8 @@ function updateUI(data) {
     else if (data.soh < 75) glow.style.background = 'var(--accent-red)';
     else glow.style.background = 'var(--accent-green)';
 
-    document.getElementById('soh-bar').style.width = `${data.soh}%`;
-    document.getElementById('soh-percent-label').innerText = `${data.soh}%`;
+    document.getElementById('soh-bar').style.width = ${ data.soh }%;
+    document.getElementById('soh-percent-label').innerText = ${ data.soh }%;
 }
 
 function updateHistory(data) {
@@ -271,9 +271,9 @@ function updateHistory(data) {
     charts.s.update('none');
 
     // Summary Stats in Chart headers
-    document.getElementById('v-avg').innerText = `Avg: ${(history.v.reduce((a, b) => a + b) / history.v.length).toFixed(2)}V`;
-    document.getElementById('c-peak').innerText = `Peak: ${Math.max(...history.c).toFixed(1)}A`;
-    document.getElementById('t-max').innerText = `Max: ${Math.round(Math.max(...history.t))}°C`;
+    document.getElementById('v-avg').innerText = Avg: ${ (history.v.reduce((a, b) => a + b) / history.v.length).toFixed(2) } V;
+    document.getElementById('c-peak').innerText = Peak: ${ Math.max(...history.c).toFixed(1) } A;
+    document.getElementById('t-max').innerText = Max: ${ Math.round(Math.max(...history.t)) }°C;
 
     // Populate Data Table
     const tbody = document.getElementById('data-tbody');
@@ -329,8 +329,8 @@ function logEvent(msg, type) {
     if (log.lastElementChild && log.lastElementChild.innerText.includes(msg)) return; // Don't spam
 
     const div = document.createElement('div');
-    div.className = `log-entry ${type}`;
-    div.innerText = `[${time}] ${msg}`;
+    div.className = log - entry ${ type };
+    div.innerText = [${ time }] ${ msg };
     log.prepend(div);
     if (log.children.length > 20) log.removeChild(log.lastChild);
 }
