@@ -114,6 +114,8 @@ async function initSupabase() {
     }
 
     // 1. Fetch initial state (last 25 records to populate charts)
+    logEvent('INITIALIZING DATABASE LINK...', 'system');
+    
     const { data, error } = await supabaseClient
         .from('battery_data')
         .select('*')
@@ -123,10 +125,10 @@ async function initSupabase() {
     if (error) {
         if (error.code === 'PGRST116' || error.message.includes('not found')) {
             console.warn('Table battery_data not found. Run setup.sql in Supabase Dashboard.');
-            logEvent('DB SETUP REQUIRED', 'warn');
+            logEvent('DB SETUP REQUIRED (Check Supabase)', 'warn');
         } else {
             console.error('Supabase fetch error:', error);
-            logEvent('DB CONNECTION ERROR', 'crit');
+            logEvent('DB CONNECTION ERROR: ' + error.message, 'crit');
         }
         // Fallback to simulation if DB fails initially
         mainLoopFallback();
@@ -134,6 +136,10 @@ async function initSupabase() {
     }
 
     if (data && data.length > 0) {
+        logEvent('DATABASE LINK ACTIVE', 'success');
+        document.getElementById('conn-text').innerText = "LIVE (SUPABASE)";
+        document.getElementById('connection-status').className = "status-pill connected";
+
         // Populate history from initial fetch (reverse to get chronological order)
         data.reverse().forEach(row => {
             const mappedData = mapSupabaseData(row);
@@ -144,9 +150,12 @@ async function initSupabase() {
         const latest = mapSupabaseData(data[data.length - 1]);
         updateUI(latest);
         checkAlerts(latest);
-
-        document.getElementById('conn-text').innerText = "LIVE (SUPABASE)";
-        document.getElementById('connection-status').className = "status-pill connected";
+    } else {
+        logEvent('TABLE EMPTY - WAITING FOR DATA...', 'warn');
+        document.getElementById('conn-text').innerText = "LINK OK - EMPTY DB";
+        // If table exists but is empty, we start simulation so the user doesn't see 0.00
+        // until their ESP32 starts sending real data.
+        mainLoopFallback();
     }
 
     // 2. Subscribe to real-time changes
@@ -156,6 +165,7 @@ async function initSupabase() {
             'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'battery_data' },
             (payload) => {
+                logEvent('DATA RECEIVED FROM CLOUD', 'success');
                 const newData = mapSupabaseData(payload.new);
                 document.getElementById('conn-text').innerText = "LIVE (SUPABASE)";
                 document.getElementById('connection-status').className = "status-pill connected";
@@ -170,14 +180,18 @@ async function initSupabase() {
 
 // Map database column names to our app's internal names
 function mapSupabaseData(row) {
+    // Handle both 'temperature' and 'temp' column names carefully with zero check
+    const tempVal = (row.temperature !== undefined && row.temperature !== null) ? row.temperature : 
+                   (row.temp !== undefined && row.temp !== null) ? row.temp : 25;
+
     return {
-        voltage: row.voltage || 0,
-        current: row.current || 0,
-        temp: row.temperature || row.temp || 0, // handles both naming variants
-        soc: row.soc || 0,
-        soh: row.soh || 0,
-        rul: row.rul || 250, // default if not in table
-        fan: row.temp > 45,  // derived logic if column missing
+        voltage: row.voltage !== undefined ? row.voltage : 0,
+        current: row.current !== undefined ? row.current : 0,
+        temp: tempVal,
+        soc: row.soc !== undefined ? row.soc : 0,
+        soh: row.soh !== undefined ? row.soh : 100,
+        rul: row.rul !== undefined ? row.rul : 250,
+        fan: tempVal > 45,
         relay_status: row.relay_status !== undefined ? row.relay_status : true,
         created_at: row.created_at
     };
@@ -288,9 +302,15 @@ function updateHistory(data) {
     charts.s.update('none');
 
     // Summary Stats in Chart headers
-    document.getElementById('v-avg').innerText = `Avg: ${(history.v.reduce((a, b) => a + b) / history.v.length).toFixed(2)} V`;
-    document.getElementById('c-peak').innerText = `Peak: ${Math.max(...history.c).toFixed(1)} A`;
-    document.getElementById('t-max').innerText = `Max: ${Math.round(Math.max(...history.t))}°C`;
+    if (history.v.length > 0) {
+        document.getElementById('v-avg').innerText = `Avg: ${(history.v.reduce((a, b) => a + b, 0) / history.v.length).toFixed(2)} V`;
+    }
+    if (history.c.length > 0) {
+        document.getElementById('c-peak').innerText = `Peak: ${Math.max(...history.c).toFixed(1)} A`;
+    }
+    if (history.t.length > 0) {
+        document.getElementById('t-max').innerText = `Max: ${Math.round(Math.max(...history.t))}°C`;
+    }
 
     // Populate Data Table
     const tbody = document.getElementById('data-tbody');
