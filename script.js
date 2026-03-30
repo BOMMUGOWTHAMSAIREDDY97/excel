@@ -113,8 +113,8 @@ function drawSpeedo(config, value, color) {
     ctx.lineWidth = 10;
     ctx.stroke();
 
-    // Fill
-    const percent = Math.min(value / max, 1);
+    // Fill - Clamp percent between 0 and 1 to prevent gauge drawing backward
+    const percent = Math.max(0, Math.min(value / max, 1));
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, Math.PI, Math.PI + (percent * Math.PI));
     ctx.strokeStyle = color;
@@ -201,10 +201,14 @@ function mapSupabaseData(row) {
     const tempVal = (row.temperature !== undefined && row.temperature !== null) ? row.temperature : 
                    (row.temp !== undefined && row.temp !== null) ? row.temp : 25;
 
+    const isFault = (tempVal === -127 || tempVal < -50);
+    if (isFault) tempVal = 0; // Don't show -127 in UI big numbers
+
     return {
         voltage: row.voltage !== undefined ? row.voltage : 0,
         current: row.current !== undefined ? row.current : 0,
         temp: tempVal,
+        sensor_fault: isFault,
         soc: row.soc !== undefined ? row.soc : 0,
         soh: row.soh !== undefined ? row.soh : 100,
         rul: row.rul !== undefined ? row.rul : 250,
@@ -359,7 +363,10 @@ function checkAlerts(data) {
     let msg = "";
     let lvl = "system";
 
-    if (data.temp > CONFIG.THRESHOLDS.TEMP_CRIT) {
+    if (data.sensor_fault) {
+        active = true; msg = "SENSOR DISCONNECTED"; detail.innerText = "Check ESP32 temperature sensor wiring.";
+        lvl = "warn";
+    } else if (data.temp > CONFIG.THRESHOLDS.TEMP_CRIT) {
         active = true; msg = "THERMAL RUNAWAY RISK"; detail.innerText = "Critical cell temperature detected. Cooling Max!";
         lvl = "crit";
     } else if (data.voltage < CONFIG.THRESHOLDS.VOLT_LOW) {
