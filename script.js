@@ -9,10 +9,16 @@ const CONFIG = {
     }
 };
 
-// Supabase Configuration - REPLACE WITH YOUR ACTUAL CREDENTIALS
+// Supabase Configuration
 const SUPABASE_URL = 'https://jmknmbgssiztxzdttsmp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impta25tYmdzc2l6dHh6ZHR0c21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0OTc0MjIsImV4cCI6MjA4OTA3MzQyMn0.EViFTAl-lpeaz3RkjNefe4aKQvRto9AqINPvLI_G7nc';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let supabaseClient;
+if (window.supabase) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} else {
+    console.error("Supabase script failed to load from CDN.");
+}
 
 let charts = {};
 let gauges = {};
@@ -101,6 +107,12 @@ function drawSpeedo(config, value, color) {
 
 // 3. Supabase Integration
 async function initSupabase() {
+    if (!supabaseClient) {
+        console.error("Supabase client not initialized.");
+        mainLoopFallback();
+        return;
+    }
+
     // 1. Fetch initial state (last 25 records to populate charts)
     const { data, error } = await supabaseClient
         .from('battery_data')
@@ -109,8 +121,13 @@ async function initSupabase() {
         .limit(CONFIG.HISTORY_LEN);
 
     if (error) {
-        console.error('Supabase fetch error:', error);
-        logEvent('DB CONNECTION ERROR', 'crit');
+        if (error.code === 'PGRST116' || error.message.includes('not found')) {
+            console.warn('Table battery_data not found. Run setup.sql in Supabase Dashboard.');
+            logEvent('DB SETUP REQUIRED', 'warn');
+        } else {
+            console.error('Supabase fetch error:', error);
+            logEvent('DB CONNECTION ERROR', 'crit');
+        }
         // Fallback to simulation if DB fails initially
         mainLoopFallback();
         return;
