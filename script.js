@@ -48,45 +48,49 @@ function initCharts() {
     const common = {
         responsive: true,
         maintainAspectRatio: false,
-        animation: { duration: 0 }, // Disable animations for performance and instant visibility
+        animation: { duration: 800, easing: 'easeOutQuart' }, // Add smooth animation
+        interaction: { mode: 'index', intersect: false },
         plugins: { 
             legend: { display: false },
-            tooltip: { enabled: true }
+            tooltip: { 
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                titleFont: { family: 'Orbitron' },
+                bodyFont: { family: 'Inter' }
+            }
         },
         scales: {
-            x: { 
-                display: false 
-            },
+            x: { display: false },
             y: { 
                 grid: { color: 'rgba(255,255,255,0.05)' }, 
                 ticks: { color: '#888', font: { size: 9 } },
-                beginAtZero: false
+                beginAtZero: false,
+                grace: '5%' // Add some breathing room at the top/bottom
             }
         },
         elements: { 
-            line: { tension: 0.3, borderWidth: 2.5, fill: true }, 
-            point: { radius: 2, hoverRadius: 5, backgroundColor: '#fff' } 
+            line: { tension: 0.4, borderWidth: 3, fill: true }, 
+            point: { radius: 0, hoverRadius: 6, hitRadius: 10, backgroundColor: '#fff' } 
         }
     };
 
     charts.v = new Chart(document.getElementById('chart-v'), {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'Voltage', borderColor: '#00f2ff', backgroundColor: 'rgba(0, 242, 255, 0.1)', data: [] }] },
-        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, suggestedMin: 3.0, suggestedMax: 4.5 } } }
+        data: { labels: [], datasets: [{ label: 'V', borderColor: '#00f2ff', backgroundColor: 'rgba(0, 242, 255, 0.1)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, suggestedMin: 3.5, suggestedMax: 4.2 } } }
     });
     charts.c = new Chart(document.getElementById('chart-c'), {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'Current', borderColor: '#ffdb29', backgroundColor: 'rgba(255, 219, 41, 0.1)', data: [] }] },
-        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, suggestedMin: 0, suggestedMax: 10 } } }
+        data: { labels: [], datasets: [{ label: 'A', borderColor: '#ffdb29', backgroundColor: 'rgba(255, 219, 41, 0.1)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, beginAtZero: true, suggestedMax: 5 } } }
     });
     charts.t = new Chart(document.getElementById('chart-t'), {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'Temp', borderColor: '#ff3c3c', backgroundColor: 'rgba(255, 60, 60, 0.1)', data: [] }] },
-        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, suggestedMin: 20, suggestedMax: 60 } } }
+        data: { labels: [], datasets: [{ label: '°C', borderColor: '#ff3c3c', backgroundColor: 'rgba(255, 60, 60, 0.1)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, suggestedMin: 25, suggestedMax: 45 } } }
     });
     charts.s = new Chart(document.getElementById('chart-s'), {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'SOC', borderColor: '#00ff8c', backgroundColor: 'rgba(0, 255, 140, 0.1)', data: [] }] },
+        data: { labels: [], datasets: [{ label: '%', borderColor: '#00ff8c', backgroundColor: 'rgba(0, 255, 140, 0.1)', data: [] }] },
         options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, min: 0, max: 100 } } }
     });
 }
@@ -223,12 +227,13 @@ async function mainLoopFallback() {
 }
 
 function simulate() {
-    sim.voltage += (Math.random() - 0.5) * 0.05;
-    sim.current = 1.0 + Math.random() * 2.5;
-    sim.temp += (Math.random() - 0.5) * 0.4;
-    sim.soc -= 0.01;
-    if (sim.temp > 45) { sim.fan = true; sim.temp -= 0.6; } else sim.fan = false;
-    if (sim.voltage < 3.3) sim.voltage = 3.3;
+    sim.voltage += (Math.random() - 0.5) * 0.08; // More jitter
+    sim.current = 1.0 + Math.random() * 5.5; // More range
+    sim.temp += (Math.random() - 0.5) * 0.8;
+    sim.soc -= 0.05;
+    if (sim.temp > 45) { sim.fan = true; sim.temp -= 0.9; } else sim.fan = false;
+    if (sim.voltage < 3.2) sim.voltage = 3.2;
+    if (sim.voltage > 4.2) sim.voltage = 4.2;
     return sim;
 }
 
