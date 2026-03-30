@@ -48,33 +48,46 @@ function initCharts() {
     const common = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-            x: { display: false },
-            y: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { color: '#555', font: { size: 9 } } }
+        animation: { duration: 0 }, // Disable animations for performance and instant visibility
+        plugins: { 
+            legend: { display: false },
+            tooltip: { enabled: true }
         },
-        elements: { line: { tension: 0.4, borderWidth: 2, fill: true }, point: { radius: 0 } }
+        scales: {
+            x: { 
+                display: false 
+            },
+            y: { 
+                grid: { color: 'rgba(255,255,255,0.05)' }, 
+                ticks: { color: '#888', font: { size: 9 } },
+                beginAtZero: false
+            }
+        },
+        elements: { 
+            line: { tension: 0.3, borderWidth: 2.5, fill: true }, 
+            point: { radius: 2, hoverRadius: 5, backgroundColor: '#fff' } 
+        }
     };
 
     charts.v = new Chart(document.getElementById('chart-v'), {
         type: 'line',
-        data: { labels: [], datasets: [{ borderColor: '#00f2ff', backgroundColor: 'rgba(0, 242, 255, 0.05)', data: [] }] },
-        options: common
+        data: { labels: [], datasets: [{ label: 'Voltage', borderColor: '#00f2ff', backgroundColor: 'rgba(0, 242, 255, 0.1)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, suggestedMin: 3.0, suggestedMax: 4.5 } } }
     });
     charts.c = new Chart(document.getElementById('chart-c'), {
         type: 'line',
-        data: { labels: [], datasets: [{ borderColor: '#ffdb29', backgroundColor: 'rgba(255, 219, 41, 0.05)', data: [] }] },
-        options: common
+        data: { labels: [], datasets: [{ label: 'Current', borderColor: '#ffdb29', backgroundColor: 'rgba(255, 219, 41, 0.1)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, suggestedMin: 0, suggestedMax: 10 } } }
     });
     charts.t = new Chart(document.getElementById('chart-t'), {
         type: 'line',
-        data: { labels: [], datasets: [{ borderColor: '#ff3c3c', backgroundColor: 'rgba(255, 60, 60, 0.05)', data: [] }] },
-        options: common
+        data: { labels: [], datasets: [{ label: 'Temp', borderColor: '#ff3c3c', backgroundColor: 'rgba(255, 60, 60, 0.1)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, suggestedMin: 20, suggestedMax: 60 } } }
     });
     charts.s = new Chart(document.getElementById('chart-s'), {
         type: 'line',
-        data: { labels: [], datasets: [{ borderColor: '#00ff8c', backgroundColor: 'rgba(0, 255, 140, 0.05)', data: [] }] },
-        options: common
+        data: { labels: [], datasets: [{ label: 'SOC', borderColor: '#00ff8c', backgroundColor: 'rgba(0, 255, 140, 0.1)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, min: 0, max: 100 } } }
     });
 }
 
@@ -287,19 +300,19 @@ function updateHistory(data) {
 
     charts.v.data.labels = history.l;
     charts.v.data.datasets[0].data = history.v;
-    charts.v.update('none');
+    charts.v.update();
 
     charts.c.data.labels = history.l;
     charts.c.data.datasets[0].data = history.c;
-    charts.c.update('none');
+    charts.c.update();
 
     charts.t.data.labels = history.l;
     charts.t.data.datasets[0].data = history.t;
-    charts.t.update('none');
+    charts.t.update();
 
     charts.s.data.labels = history.l;
     charts.s.data.datasets[0].data = history.s;
-    charts.s.update('none');
+    charts.s.update();
 
     // Summary Stats in Chart headers
     if (history.v.length > 0) {
