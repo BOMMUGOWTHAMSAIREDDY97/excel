@@ -97,20 +97,25 @@ function initCharts() {
 
 // 2. Custom Canvas Speedometers
 function initSpeedos() {
-    gauges.v = { ctx: document.getElementById('gauge-voltage').getContext('2d'), val: 0, max: 4.5 };
-    gauges.t = { ctx: document.getElementById('gauge-temp').getContext('2d'), val: 0, max: 80 };
+    const cv = document.getElementById('gauge-voltage');
+    const ct = document.getElementById('gauge-temp');
+    cv.width = 300; cv.height = 150;
+    ct.width = 300; ct.height = 150;
+    gauges.v = { ctx: cv.getContext('2d'), val: 0, max: 4.5 };
+    gauges.t = { ctx: ct.getContext('2d'), val: 0, max: 80 };
 }
 
 function drawSpeedo(config, value, color) {
     const { ctx, max } = config;
-    ctx.clearRect(0, 0, 300, 300);
-    const centerX = 70; const centerY = 65; const radius = 55;
+    ctx.clearRect(0, 0, 300, 150);
+    const centerX = 150; const centerY = 140; const radius = 120;
 
     // Track (Back)
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, Math.PI, 2 * Math.PI);
     ctx.strokeStyle = '#222';
-    ctx.lineWidth = 10;
+    ctx.lineWidth = 18;
+    ctx.lineCap = 'round';
     ctx.stroke();
 
     // Fill - Clamp percent between 0 and 1 to prevent gauge drawing backward
@@ -118,7 +123,8 @@ function drawSpeedo(config, value, color) {
     ctx.beginPath();
     ctx.arc(centerX, centerY, radius, Math.PI, Math.PI + (percent * Math.PI));
     ctx.strokeStyle = color;
-    ctx.lineWidth = 10;
+    ctx.lineWidth = 18;
+    ctx.lineCap = 'round';
     ctx.stroke();
 }
 

@@ -306,8 +306,10 @@ h3 {
 }
 
 .speedo-canvas {
-    width: 140px;
-    height: 70px;
+    width: 100%;
+    max-width: 220px;
+    height: auto;
+    margin: 0 auto;
 }
 
 .gauge-labels {
