@@ -216,7 +216,7 @@ function mapSupabaseData(row) {
             : 25;
 
     const isFault = (tempVal === -127 || tempVal < -50);
-    if (isFault) tempVal = 0; // Don't show -127 in UI
+    // if (isFault) tempVal = 0; // Show the actual -127 in UI instead of 0
 
     return {
         voltage:      safeNum(row.voltage, 0),
