@@ -69,7 +69,7 @@ function initCharts() {
         },
         elements: { 
             line: { tension: 0.4, borderWidth: 3, fill: true }, 
-            point: { radius: 0, hoverRadius: 6, hitRadius: 10, backgroundColor: '#fff' } 
+            point: { radius: 3, hoverRadius: 6, hitRadius: 10, backgroundColor: '#fff' } 
         }
     };
 
