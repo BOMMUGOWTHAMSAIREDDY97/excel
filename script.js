@@ -275,7 +275,7 @@ function updateUI(data) {
     // Master Battery
     const fill = document.getElementById('battery-fill-master');
     fill.style.height = `${soc}%`;
-    document.getElementById('soc-value-master').innerText = Math.round(soc);
+    document.getElementById('soc-value-master').innerText = soc.toFixed(1);
 
     if (soc < 20) fill.style.backgroundColor = 'var(--accent-red)';
     else if (soc < 45) fill.style.backgroundColor = 'var(--accent-yellow)';
@@ -284,12 +284,12 @@ function updateUI(data) {
     // Stats
     document.getElementById('stat-current').innerText = curr.toFixed(2);
     document.getElementById('stat-power').innerText   = (volt * curr).toFixed(2);
-    document.getElementById('stat-temp').innerText    = Math.round(temp);
+    document.getElementById('stat-temp').innerText    = temp.toFixed(1);
     document.getElementById('rul-val').innerText      = rul;
 
     // Gauges
     document.getElementById('val-v').innerText = volt.toFixed(2);
-    document.getElementById('val-t').innerText = Math.round(temp);
+    document.getElementById('val-t').innerText = temp.toFixed(1);
     drawSpeedo(gauges.v, volt, '#00f2ff');
     drawSpeedo(gauges.t, temp, temp > 50 ? '#ff3c3c' : '#ffdb29');
 
@@ -362,7 +362,7 @@ function updateHistory(data) {
         document.getElementById('c-peak').innerText = `Peak: ${Math.max(...history.c).toFixed(1)} A`;
     }
     if (history.t.length > 0) {
-        document.getElementById('t-max').innerText = `Max: ${Math.round(Math.max(...history.t))}°C`;
+        document.getElementById('t-max').innerText = `Max: ${Math.max(...history.t).toFixed(1)}°C`;
     }
 
     // Populate Data Table
