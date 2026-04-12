@@ -376,7 +376,7 @@ function updateUI(data) {
 }
 
 function updateHistory(data) {
-    const time = new Date().toLocaleTimeString();
+    const time = data.created_at ? new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : new Date().toLocaleTimeString();
     history.l.push(time);
     history.v.push(data.voltage);
     history.c.push(data.current);
