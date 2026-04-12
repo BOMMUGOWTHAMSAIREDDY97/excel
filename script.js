@@ -376,7 +376,8 @@ function updateUI(data) {
 }
 
 function updateHistory(data) {
-    const time = data.created_at ? new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : new Date().toLocaleTimeString();
+    const timeOptions = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+    const time = data.created_at ? new Date(data.created_at).toLocaleTimeString('en-US', timeOptions) : new Date().toLocaleTimeString('en-US', timeOptions);
     history.l.push(time);
     history.v.push(data.voltage);
     history.c.push(data.current);
@@ -625,7 +626,15 @@ function runAIAnalytics(allData) {
     const temps = allData.map(d => Number(d.temperature));
     const socs = allData.map(d => Number(d.soc));
     const sohs = allData.map(d => Number(d.soh));
-    const times = allData.map(d => new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    const times = allData.map(d => {
+        return new Date(d.created_at).toLocaleTimeString('en-US', { 
+            timeZone: 'Asia/Kolkata', 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true 
+        });
+    });
 
     // ── 1. SOH Degradation Forecast ──
     const sohLabels = [...times];
