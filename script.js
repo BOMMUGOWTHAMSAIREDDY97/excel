@@ -381,8 +381,15 @@ function updateUI(data) {
 }
 
 function updateHistory(data) {
-    const timeOptions = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-    const time = data.created_at ? new Date(data.created_at).toLocaleTimeString('en-US', timeOptions) : new Date().toLocaleTimeString('en-US', timeOptions);
+    const dt = data.created_at ? new Date(data.created_at) : new Date();
+    // Explicitly format to IST (Asia/Kolkata)
+    const time = dt.toLocaleTimeString('en-IN', { 
+        timeZone: 'Asia/Kolkata', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: true 
+    });
     history.l.push(time);
     history.v.push(data.voltage);
     history.c.push(data.current);
@@ -635,7 +642,8 @@ function runAIAnalytics(allData) {
     const socs = allData.map(d => Number(d.soc));
     const sohs = allData.map(d => Number(d.soh));
     const times = allData.map(d => {
-        return new Date(d.created_at).toLocaleTimeString('en-US', { 
+        const dt = new Date(d.created_at);
+        return dt.toLocaleTimeString('en-IN', { 
             timeZone: 'Asia/Kolkata', 
             hour: '2-digit', 
             minute: '2-digit', 
@@ -777,7 +785,9 @@ function runAIAnalytics(allData) {
 
     document.getElementById('ai-rul-pred').innerText = avgRUL + ' cyc';
 
-    const efficiency = Math.min(100, (latestSOC / 100 * latestSOH / 100 * 100 + stabilityScore) / 2).toFixed(0);
+    // Fixed efficiency calculation (replaced stabilityScore with powerFlowScore)
+    const efficiency = Math.min(100, Math.round((latestSOC + latestSOH + powerFlowScore) / 3));
+    document.getElementById('ai-efficiency').innerText = efficiency + '%';
     document.getElementById('ai-efficiency').innerText = efficiency + '%';
 
     statusEl.innerText = `✅ Analysis complete — ${allData.length} samples processed`;
