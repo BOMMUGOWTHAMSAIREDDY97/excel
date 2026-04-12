@@ -196,6 +196,7 @@ async function initSupabase() {
         if (aiRawData && aiRawData.length > 0) {
             // Reverse to chronological order (oldest first)
             aiRawData.reverse();
+            window.aiRawDataPointer = aiRawData; // Store for real-time buffer
             logEvent('AI ENGINE: ANALYZING ' + aiRawData.length + ' SAMPLES', 'system');
             runAIAnalytics(aiRawData);
         }
@@ -205,10 +206,14 @@ async function initSupabase() {
         mainLoopFallback();
     }
 
-    // 2. Subscribe to real-time changes
-    let realtimeBuffer = data ? [...data] : [];
+    // 2. Subscribe to real-time changes (Unique channel for reliability)
+    const channelId = 'bms-live-' + Math.random().toString(36).substring(7);
+    
+    // Use the 500 rows (aiRawData) for the AI buffer, or fallback to the 200 rows (data)
+    let realtimeBuffer = (window.aiRawDataPointer) ? [...window.aiRawDataPointer] : (data ? [...data] : []);
+    
     supabaseClient
-        .channel('battery-updates')
+        .channel(channelId)
         .on(
             'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'battery_data' },
@@ -224,7 +229,7 @@ async function initSupabase() {
 
                 // Update AI analytics with new data
                 realtimeBuffer.push(payload.new);
-                if (realtimeBuffer.length > 100) realtimeBuffer.shift();
+                if (realtimeBuffer.length > 500) realtimeBuffer.shift();
                 runAIAnalytics(realtimeBuffer);
             }
         )
@@ -616,6 +621,9 @@ function initAICharts() {
 // AI Analytics — called with real Supabase data
 function runAIAnalytics(allData) {
     if (!allData || allData.length < 2) return;
+
+    // Force chronological sort to prevent time-jumps
+    allData.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
     const statusEl = document.getElementById('ai-status');
     statusEl.innerText = `Analyzing ${allData.length} data points from Supabase...`;

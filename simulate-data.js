@@ -1,79 +1,55 @@
 const { createClient } = require('@supabase/supabase-js');
 
-// ─── Use your REAL Supabase project credentials ───
 const SUPABASE_URL = 'https://jmknmbgssiztxzdttsmp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impta25tYmdzc2l6dHh6ZHR0c21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0OTc0MjIsImV4cCI6MjA4OTA3MzQyMn0.EViFTAl-lpeaz3RkjNefe4aKQvRto9AqINPvLI_G7nc';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ─── This script READS real data from Supabase (no random values) ───
-async function fetchRealData() {
-  console.log('📡 Fetching REAL data from Supabase...\n');
+async function generateAITestData() {
+    console.log("🚀 Starting AI Dataset Generation...");
+    
+    const points = 100;
+    const dataToPush = [];
+    const now = new Date();
 
-  const { data, error } = await supabase
-    .from('battery_data')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(25);
+    for (let i = 0; i < points; i++) {
+        const timestamp = new Date(now.getTime() - (points - i) * 60000).toISOString();
+        const phase = i < 50 ? 'discharge' : 'charge';
+        
+        let voltage, current, temp, soc;
+        
+        if (phase === 'discharge') {
+            voltage = 4.1 - (i * 0.01) + (Math.random() * 0.05);
+            current = -1.5 - (Math.random() * 0.5);
+            temp = 28 + (i * 0.15);
+            soc = 100 - i;
+        } else {
+            voltage = 3.6 + ((i-50) * 0.01) + (Math.random() * 0.05);
+            current = 2.0 + (Math.random() * 0.3);
+            temp = 35.5 - ((i-50) * 0.1);
+            soc = 50 + (i-50);
+        }
 
-  if (error) {
-    console.error('❌ Error fetching data:', error.message);
-    process.exit(1);
-  }
+        dataToPush.push({
+            voltage: parseFloat(voltage.toFixed(2)),
+            current: parseFloat(current.toFixed(2)),
+            temperature: parseFloat(temp.toFixed(1)),
+            soc: Math.round(soc),
+            soh: (98 - (i * 0.02)).toFixed(1), // Show a slight health degradation
+            created_at: timestamp
+        });
+    }
 
-  if (!data || data.length === 0) {
-    console.log('⚠️  No data found in battery_data table.');
-    console.log('    Make sure your ESP32 is sending data to Supabase.');
-    process.exit(0);
-  }
+    console.log(`📦 Prepared ${dataToPush.length} points (Col: V, I, T, SOC, SOH). Pushing...`);
 
-  console.log(`✅ Found ${data.length} real records from Supabase:\n`);
-  
-  // Show latest reading
-  const latest = data[0];
-  console.log('═══════════════════════════════════════');
-  console.log('  📊 LATEST BATTERY READING (REAL DATA)');
-  console.log('═══════════════════════════════════════');
-  console.log(`  🔋 Voltage:     ${latest.voltage} V`);
-  console.log(`  ⚡ Current:     ${latest.current} A`);
-  console.log(`  🌡️  Temperature: ${latest.temperature} °C`);
-  console.log(`  🔋 SOC:         ${latest.soc} %`);
-  console.log(`  💚 SOH:         ${latest.soh} %`);
-  console.log(`  🔌 Relay:       ${latest.relay_status ? 'ENGAGED' : 'OPEN'}`);
-  console.log(`  🕐 Timestamp:   ${latest.created_at}`);
-  console.log('═══════════════════════════════════════\n');
+    const { error } = await supabase.from('battery_data').insert(dataToPush);
 
-  // Show recent history table
-  console.log('📋 Recent 25 readings:');
-  console.table(data.map(row => ({
-    time: new Date(row.created_at).toLocaleTimeString(),
-    voltage: row.voltage,
-    current: row.current,
-    temp: row.temperature,
-    soc: row.soc,
-    soh: row.soh
-  })));
-
-  // ─── Real-time listener for new data from ESP32 ───
-  console.log('\n🔴 LIVE: Listening for new ESP32 data in real-time...');
-  console.log('   (Waiting for your ESP32 to send new readings)\n');
-
-  supabase
-    .channel('live-battery-feed')
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'battery_data' },
-      (payload) => {
-        const row = payload.new;
-        const time = new Date(row.created_at).toLocaleTimeString();
-        console.log(`📡 [${time}] NEW DATA → V=${row.voltage}V | A=${row.current}A | T=${row.temperature}°C | SOC=${row.soc}% | SOH=${row.soh}%`);
-      }
-    )
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ Real-time subscription active. Waiting for ESP32...\n');
-      }
-    });
+    if (error) {
+        console.error("❌ Error pushing data:", error.message);
+    } else {
+        console.log("✅ AI Dataset successfully updated in Supabase!");
+        console.log("👉 Refresh your dashboard now to see the new graphs with full UPS and DOWNS.");
+    }
 }
 
-fetchRealData();
+generateAITestData();
