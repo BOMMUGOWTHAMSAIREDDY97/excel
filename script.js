@@ -30,6 +30,7 @@ let history = { v: [], c: [], t: [], s: [], l: [] };
 window.onload = () => {
     initCharts();
     initSpeedos();
+    initAICharts();
     startClock();
     initSupabase(); // Start real-time listener
 };
@@ -180,6 +181,18 @@ async function initSupabase() {
         const latest = mapSupabaseData(data[data.length - 1]);
         updateUI(latest);
         checkAlerts(latest);
+
+        // Fetch more data for AI analysis (100 rows)
+        const { data: aiRawData } = await supabaseClient
+            .from('battery_data')
+            .select('*')
+            .order('created_at', { ascending: true })
+            .limit(100);
+        
+        if (aiRawData && aiRawData.length > 0) {
+            logEvent('AI ENGINE: ANALYZING ' + aiRawData.length + ' SAMPLES', 'system');
+            runAIAnalytics(aiRawData);
+        }
     } else {
         logEvent('REMOTE TABLE EMPTY - WAITING FOR ESP32...', 'warn');
         document.getElementById('conn-text').innerText = "WAITING FOR DATA";
@@ -187,6 +200,7 @@ async function initSupabase() {
     }
 
     // 2. Subscribe to real-time changes
+    let realtimeBuffer = data ? [...data] : [];
     supabaseClient
         .channel('battery-updates')
         .on(
@@ -201,6 +215,11 @@ async function initSupabase() {
                 updateUI(newData);
                 updateHistory(newData);
                 checkAlerts(newData);
+
+                // Update AI analytics with new data
+                realtimeBuffer.push(payload.new);
+                if (realtimeBuffer.length > 100) realtimeBuffer.shift();
+                runAIAnalytics(realtimeBuffer);
             }
         )
         .subscribe();
@@ -450,4 +469,292 @@ function logEvent(msg, type) {
     div.innerText = `[${time}] ${msg}`;
     log.prepend(div);
     if (log.children.length > 20) log.removeChild(log.lastChild);
+}
+
+// ============================================================
+// 6. AI PREDICTIVE ANALYTICS ENGINE
+// ============================================================
+let aiCharts = {};
+let aiData = { sohHistory: [], rulHistory: [], voltTemps: [] };
+
+function initAICharts() {
+    const aiCommon = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 1000, easing: 'easeOutQuart' },
+        plugins: {
+            legend: { display: true, labels: { color: '#aaa', font: { size: 10, family: 'Inter' } } },
+            tooltip: {
+                backgroundColor: 'rgba(20, 10, 40, 0.95)',
+                titleFont: { family: 'Orbitron', size: 11 },
+                bodyFont: { family: 'Inter' },
+                borderColor: 'rgba(168, 85, 247, 0.3)',
+                borderWidth: 1
+            }
+        }
+    };
+
+    // 1. SOH Degradation Forecast (Line chart with prediction)
+    aiCharts.soh = new Chart(document.getElementById('chart-ai-soh'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Actual SOH',
+                    borderColor: '#a855f7',
+                    backgroundColor: 'rgba(168, 85, 247, 0.1)',
+                    data: [],
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#a855f7'
+                },
+                {
+                    label: 'Predicted SOH',
+                    borderColor: '#06b6d4',
+                    backgroundColor: 'rgba(6, 182, 212, 0.05)',
+                    data: [],
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2,
+                    borderDash: [8, 4],
+                    pointRadius: 2,
+                    pointBackgroundColor: '#06b6d4'
+                }
+            ]
+        },
+        options: {
+            ...aiCommon,
+            scales: {
+                x: { display: true, ticks: { color: '#555', font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                y: { min: 80, max: 100, ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(168,85,247,0.08)' } }
+            }
+        }
+    });
+
+    // 2. Battery Health Radar
+    aiCharts.radar = new Chart(document.getElementById('chart-ai-radar'), {
+        type: 'radar',
+        data: {
+            labels: ['Voltage', 'Current', 'Temperature', 'SOC', 'SOH', 'Stability'],
+            datasets: [{
+                label: 'Health Index',
+                data: [0, 0, 0, 0, 0, 0],
+                borderColor: '#a855f7',
+                backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                borderWidth: 2,
+                pointBackgroundColor: '#a855f7',
+                pointBorderColor: '#fff',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            ...aiCommon,
+            scales: {
+                r: {
+                    min: 0, max: 100,
+                    ticks: { color: '#555', backdropColor: 'transparent', stepSize: 25, font: { size: 8 } },
+                    grid: { color: 'rgba(168, 85, 247, 0.1)' },
+                    angleLines: { color: 'rgba(168, 85, 247, 0.15)' },
+                    pointLabels: { color: '#aaa', font: { size: 10, family: 'Inter' } }
+                }
+            }
+        }
+    });
+
+    // 3. RUL Prediction Timeline (Bar chart)
+    aiCharts.rul = new Chart(document.getElementById('chart-ai-rul'), {
+        type: 'bar',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Predicted RUL (cycles)',
+                data: [],
+                backgroundColor: [],
+                borderColor: 'rgba(168, 85, 247, 0.5)',
+                borderWidth: 1,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            ...aiCommon,
+            scales: {
+                x: { ticks: { color: '#555', font: { size: 9 }, maxTicksLimit: 12 }, grid: { display: false } },
+                y: { min: 0, ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(168,85,247,0.08)' } }
+            }
+        }
+    });
+
+    // 4. Voltage-Temperature Correlation (Scatter)
+    aiCharts.corr = new Chart(document.getElementById('chart-ai-corr'), {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'V vs T',
+                data: [],
+                backgroundColor: 'rgba(6, 182, 212, 0.6)',
+                borderColor: '#06b6d4',
+                pointRadius: 5,
+                pointHoverRadius: 8
+            }]
+        },
+        options: {
+            ...aiCommon,
+            scales: {
+                x: { title: { display: true, text: 'Temperature (°C)', color: '#888', font: { size: 10 } }, ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(6,182,212,0.08)' } },
+                y: { title: { display: true, text: 'Voltage (V)', color: '#888', font: { size: 10 } }, ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(6,182,212,0.08)' } }
+            }
+        }
+    });
+}
+
+// AI Analytics — called with real Supabase data
+function runAIAnalytics(allData) {
+    if (!allData || allData.length < 2) return;
+
+    const statusEl = document.getElementById('ai-status');
+    statusEl.innerText = `Analyzing ${allData.length} data points from Supabase...`;
+
+    // ── Extract arrays from real data ──
+    const voltages = allData.map(d => Number(d.voltage));
+    const currents = allData.map(d => Math.abs(Number(d.current)));
+    const temps = allData.map(d => Number(d.temperature));
+    const socs = allData.map(d => Number(d.soc));
+    const sohs = allData.map(d => Number(d.soh));
+    const times = allData.map(d => new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+
+    // ── 1. SOH Degradation Forecast ──
+    const sohLabels = [...times];
+    const sohActual = [...sohs];
+    const sohPredicted = [...sohs];
+
+    // Predict future SOH using linear regression
+    const n = sohs.length;
+    const avgSOH = sohs.reduce((a, b) => a + b, 0) / n;
+    const indices = sohs.map((_, i) => i);
+    const avgIdx = indices.reduce((a, b) => a + b, 0) / n;
+    let slope = 0;
+    let denom = 0;
+    for (let i = 0; i < n; i++) {
+        slope += (indices[i] - avgIdx) * (sohs[i] - avgSOH);
+        denom += (indices[i] - avgIdx) ** 2;
+    }
+    slope = denom !== 0 ? slope / denom : -0.01;
+    const intercept = avgSOH - slope * avgIdx;
+
+    // Add 10 future predictions
+    for (let i = 1; i <= 10; i++) {
+        sohLabels.push(`+${i * 10}min`);
+        sohActual.push(null);
+        const predicted = Math.max(80, intercept + slope * (n + i * 5));
+        sohPredicted.push(Number(predicted.toFixed(1)));
+    }
+
+    aiCharts.soh.data.labels = sohLabels;
+    aiCharts.soh.data.datasets[0].data = sohActual;
+    aiCharts.soh.data.datasets[1].data = sohPredicted;
+    aiCharts.soh.update();
+
+    const trendDir = slope >= 0 ? '📈 Stable' : '📉 Degrading';
+    document.getElementById('ai-soh-trend').innerText = `${trendDir} (${(slope * 100).toFixed(3)}%/sample)`;
+
+    // ── 2. Battery Health Radar ──
+    const latestV = voltages[voltages.length - 1];
+    const latestI = currents[currents.length - 1];
+    const latestT = temps[temps.length - 1];
+    const latestSOC = socs[socs.length - 1];
+    const latestSOH = sohs[sohs.length - 1];
+
+    // Normalize to 0-100 scale
+    const vScore = Math.min(100, Math.max(0, ((latestV - 3.0) / 1.2) * 100));
+    const iScore = Math.min(100, Math.max(0, 100 - (latestI / 5) * 100));
+    const tScore = Math.min(100, Math.max(0, 100 - ((latestT - 20) / 40) * 100));
+    const socScore = latestSOC;
+    const sohScore = latestSOH;
+
+    // Stability = std deviation of voltage (lower = more stable = higher score)
+    const vMean = voltages.reduce((a, b) => a + b, 0) / voltages.length;
+    const vStd = Math.sqrt(voltages.reduce((sum, v) => sum + (v - vMean) ** 2, 0) / voltages.length);
+    const stabilityScore = Math.min(100, Math.max(0, 100 - vStd * 500));
+
+    aiCharts.radar.data.datasets[0].data = [
+        vScore.toFixed(0), iScore.toFixed(0), tScore.toFixed(0),
+        socScore.toFixed(0), sohScore.toFixed(0), stabilityScore.toFixed(0)
+    ];
+    aiCharts.radar.update();
+
+    // ── 3. RUL Prediction Timeline ──
+    const rulLabels = times.slice(-15);
+    const rulData = socs.slice(-15).map((soc, i) => {
+        const baseCycles = 250;
+        const tempPenalty = Math.max(0, (temps[temps.length - 15 + i] || 30) - 30) * 2;
+        const socFactor = soc / 100;
+        return Math.max(50, Math.round(baseCycles * socFactor - tempPenalty));
+    });
+
+    const rulColors = rulData.map(v => {
+        if (v > 180) return 'rgba(0, 255, 140, 0.7)';
+        if (v > 120) return 'rgba(255, 219, 41, 0.7)';
+        return 'rgba(255, 60, 60, 0.7)';
+    });
+
+    aiCharts.rul.data.labels = rulLabels;
+    aiCharts.rul.data.datasets[0].data = rulData;
+    aiCharts.rul.data.datasets[0].backgroundColor = rulColors;
+    aiCharts.rul.update();
+
+    const avgRUL = Math.round(rulData.reduce((a, b) => a + b, 0) / rulData.length);
+    document.getElementById('ai-rul-trend').innerText = `Avg: ${avgRUL} cycles`;
+
+    // ── 4. Voltage-Temperature Correlation ──
+    const corrData = [];
+    for (let i = 0; i < Math.min(voltages.length, temps.length); i++) {
+        if (temps[i] > -50) { // filter out sensor faults
+            corrData.push({ x: temps[i], y: voltages[i] });
+        }
+    }
+    aiCharts.corr.data.datasets[0].data = corrData;
+    aiCharts.corr.update();
+
+    // Calculate Pearson correlation coefficient
+    if (corrData.length > 2) {
+        const xArr = corrData.map(p => p.x);
+        const yArr = corrData.map(p => p.y);
+        const xMean = xArr.reduce((a, b) => a + b, 0) / xArr.length;
+        const yMean = yArr.reduce((a, b) => a + b, 0) / yArr.length;
+        let num = 0, denX = 0, denY = 0;
+        for (let i = 0; i < xArr.length; i++) {
+            num += (xArr[i] - xMean) * (yArr[i] - yMean);
+            denX += (xArr[i] - xMean) ** 2;
+            denY += (yArr[i] - yMean) ** 2;
+        }
+        const r = (denX * denY) > 0 ? num / Math.sqrt(denX * denY) : 0;
+        document.getElementById('ai-corr').innerText = `r = ${r.toFixed(3)}`;
+    }
+
+    // ── Update KPI Cards ──
+    const healthScore = ((vScore + iScore + tScore + socScore + sohScore + stabilityScore) / 6).toFixed(0);
+    document.getElementById('ai-health-score').innerText = healthScore + '%';
+
+    const anomalyEl = document.getElementById('ai-anomaly-risk');
+    if (latestT > 45 || latestV < 3.2) {
+        anomalyEl.innerText = 'HIGH';
+        anomalyEl.style.color = 'var(--accent-red)';
+    } else if (latestT > 38 || latestV < 3.5) {
+        anomalyEl.innerText = 'MEDIUM';
+        anomalyEl.style.color = 'var(--accent-yellow)';
+    } else {
+        anomalyEl.innerText = 'LOW';
+        anomalyEl.style.color = 'var(--accent-green)';
+    }
+
+    document.getElementById('ai-rul-pred').innerText = avgRUL + ' cyc';
+
+    const efficiency = Math.min(100, (latestSOC / 100 * latestSOH / 100 * 100 + stabilityScore) / 2).toFixed(0);
+    document.getElementById('ai-efficiency').innerText = efficiency + '%';
+
+    statusEl.innerText = `✅ Analysis complete — ${allData.length} samples processed`;
+    logEvent('AI ANALYTICS UPDATED', 'system');
 }

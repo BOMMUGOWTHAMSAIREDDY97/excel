@@ -185,6 +185,83 @@
             </div>
         </section>
 
+        <!-- AI Output Graph Section -->
+        <section class="ai-section">
+            <div class="ai-header glass">
+                <div class="ai-title-block">
+                    <span class="ai-icon">🧠</span>
+                    <div>
+                        <h3 style="margin-bottom: 4px;">AI PREDICTIVE ANALYTICS ENGINE</h3>
+                        <span class="ai-subtitle" id="ai-status">Processing real-time telemetry data...</span>
+                    </div>
+                </div>
+                <div class="ai-kpi-row">
+                    <div class="ai-kpi">
+                        <span class="ai-kpi-label">HEALTH SCORE</span>
+                        <span class="ai-kpi-val" id="ai-health-score">--</span>
+                    </div>
+                    <div class="ai-kpi">
+                        <span class="ai-kpi-label">ANOMALY RISK</span>
+                        <span class="ai-kpi-val" id="ai-anomaly-risk" style="color: var(--accent-green);">--</span>
+                    </div>
+                    <div class="ai-kpi">
+                        <span class="ai-kpi-label">PREDICTED RUL</span>
+                        <span class="ai-kpi-val" id="ai-rul-pred">--</span>
+                    </div>
+                    <div class="ai-kpi">
+                        <span class="ai-kpi-label">EFFICIENCY</span>
+                        <span class="ai-kpi-val" id="ai-efficiency">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ai-charts-grid">
+                <!-- SOH Degradation Prediction -->
+                <div class="chart-box glass ai-chart-wide">
+                    <div class="chart-header">
+                        <h4>🔮 SOH Degradation Forecast</h4>
+                        <span id="ai-soh-trend" class="c-stat">Analyzing...</span>
+                    </div>
+                    <div class="canvas-wrap">
+                        <canvas id="chart-ai-soh"></canvas>
+                    </div>
+                </div>
+
+                <!-- Battery Health Radar -->
+                <div class="chart-box glass ai-chart-square">
+                    <div class="chart-header">
+                        <h4>📊 Battery Health Radar</h4>
+                        <span class="c-stat">Multi-parameter</span>
+                    </div>
+                    <div class="canvas-wrap">
+                        <canvas id="chart-ai-radar"></canvas>
+                    </div>
+                </div>
+
+                <!-- RUL Prediction Timeline -->
+                <div class="chart-box glass ai-chart-wide">
+                    <div class="chart-header">
+                        <h4>⏱️ RUL Prediction Timeline</h4>
+                        <span id="ai-rul-trend" class="c-stat">Computing...</span>
+                    </div>
+                    <div class="canvas-wrap">
+                        <canvas id="chart-ai-rul"></canvas>
+                    </div>
+                </div>
+
+                <!-- Voltage vs Temperature Correlation -->
+                <div class="chart-box glass ai-chart-square">
+                    <div class="chart-header">
+                        <h4>🔗 V-T Correlation</h4>
+                        <span id="ai-corr" class="c-stat">r = --</span>
+                    </div>
+                    <div class="canvas-wrap">
+                        <canvas id="chart-ai-corr"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Data Stream Table -->
         <section class="data-table-section glass">
             <h3>LIVE DATA STREAM</h3>
