@@ -541,11 +541,11 @@ function initAICharts() {
         }
     });
 
-    // 2. Battery Health Radar
+    // 2. Battery Health Radar (Removed Stability, Added Power Flow)
     aiCharts.radar = new Chart(document.getElementById('chart-ai-radar'), {
         type: 'radar',
         data: {
-            labels: ['Voltage', 'Current', 'Temperature', 'SOC', 'SOH', 'Stability'],
+            labels: ['Voltage', 'Current', 'Temperature', 'SOC', 'SOH', 'Power Flow'],
             datasets: [{
                 label: 'Health Index',
                 data: [0, 0, 0, 0, 0, 0],
@@ -594,26 +594,21 @@ function initAICharts() {
         }
     });
 
-    // 4. Voltage-Temperature Correlation (Scatter)
-    aiCharts.corr = new Chart(document.getElementById('chart-ai-corr'), {
-        type: 'scatter',
+    // 4. AI Dynamic Mode Analyst (Changes automatically)
+    aiCharts.mode = new Chart(document.getElementById('chart-ai-mode'), {
+        type: 'line',
         data: {
+            labels: [],
             datasets: [{
-                label: 'V vs T',
+                label: 'Mode Metric',
                 data: [],
-                backgroundColor: 'rgba(6, 182, 212, 0.6)',
                 borderColor: '#06b6d4',
-                pointRadius: 5,
-                pointHoverRadius: 8
+                backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                fill: true,
+                tension: 0.4
             }]
         },
-        options: {
-            ...aiCommon,
-            scales: {
-                x: { title: { display: true, text: 'Temperature (°C)', color: '#888', font: { size: 10 } }, ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(6,182,212,0.08)' } },
-                y: { title: { display: true, text: 'Voltage (V)', color: '#888', font: { size: 10 } }, ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(6,182,212,0.08)' } }
-            }
-        }
+        options: aiCommon
     });
 }
 
@@ -667,7 +662,7 @@ function runAIAnalytics(allData) {
     const trendDir = slope >= 0 ? '📈 Stable' : '📉 Degrading';
     document.getElementById('ai-soh-trend').innerText = `${trendDir} (${(slope * 100).toFixed(3)}%/sample)`;
 
-    // ── 2. Battery Health Radar ──
+    // ── 2. Battery Health Radar (Stability -> Power Flow) ──
     const latestV = voltages[voltages.length - 1];
     const latestI = currents[currents.length - 1];
     const latestT = temps[temps.length - 1];
@@ -681,14 +676,13 @@ function runAIAnalytics(allData) {
     const socScore = latestSOC;
     const sohScore = latestSOH;
 
-    // Stability = std deviation of voltage (lower = more stable = higher score)
-    const vMean = voltages.reduce((a, b) => a + b, 0) / voltages.length;
-    const vStd = Math.sqrt(voltages.reduce((sum, v) => sum + (v - vMean) ** 2, 0) / voltages.length);
-    const stabilityScore = Math.min(100, Math.max(0, 100 - vStd * 500));
+    // Power Flow (New metric replacing Stability)
+    const powerFlow = latestV * latestI;
+    const powerFlowScore = Math.min(100, (powerFlow / 20) * 100);
 
     aiCharts.radar.data.datasets[0].data = [
         vScore.toFixed(0), iScore.toFixed(0), tScore.toFixed(0),
-        socScore.toFixed(0), sohScore.toFixed(0), stabilityScore.toFixed(0)
+        socScore.toFixed(0), sohScore.toFixed(0), powerFlowScore.toFixed(0)
     ];
     aiCharts.radar.update();
 
@@ -715,34 +709,41 @@ function runAIAnalytics(allData) {
     const avgRUL = Math.round(rulData.reduce((a, b) => a + b, 0) / rulData.length);
     document.getElementById('ai-rul-trend').innerText = `Avg: ${avgRUL} cycles`;
 
-    // ── 4. Voltage-Temperature Correlation ──
-    const corrData = [];
-    for (let i = 0; i < Math.min(voltages.length, temps.length); i++) {
-        if (temps[i] > -50) { // filter out sensor faults
-            corrData.push({ x: temps[i], y: voltages[i] });
-        }
+    // ── 4. AI Dynamic Mode Analyst (AUTO-SWITCHING) ──
+    const latestRawI = Number(allData[allData.length - 1].current);
+    const modeHeader = document.getElementById('ai-mode-header');
+    const modeType = document.getElementById('ai-mode-type');
+    
+    let modeData = [];
+    let modeLabel = "";
+    
+    if (latestRawI > 0.02) {
+        // CHARGING MODE
+        modeHeader.innerText = "⚡ Charging Efficiency";
+        modeType.innerText = "Active Charge Phase";
+        modeLabel = "C-Rate Score";
+        modeData = currents.slice(-15).map(c => Math.min(100, (c / 2) * 100));
+    } else if (latestRawI < -0.02) {
+        // DISCHARGE MODE
+        modeHeader.innerText = "🔋 Discharge Stability";
+        modeType.innerText = "Active Load Phase";
+        modeLabel = "Thermal Impact";
+        modeData = temps.slice(-15).map(t => Math.max(0, 100 - (t - 30) * 5));
+    } else {
+        // IDLE MODE
+        modeHeader.innerText = "💤 Standby Retention";
+        modeType.innerText = "Idle/Dormant Phase";
+        modeLabel = "Voltage Flatness";
+        modeData = voltages.slice(-15).map(v => 100 - (v % 0.1) * 100);
     }
-    aiCharts.corr.data.datasets[0].data = corrData;
-    aiCharts.corr.update();
 
-    // Calculate Pearson correlation coefficient
-    if (corrData.length > 2) {
-        const xArr = corrData.map(p => p.x);
-        const yArr = corrData.map(p => p.y);
-        const xMean = xArr.reduce((a, b) => a + b, 0) / xArr.length;
-        const yMean = yArr.reduce((a, b) => a + b, 0) / yArr.length;
-        let num = 0, denX = 0, denY = 0;
-        for (let i = 0; i < xArr.length; i++) {
-            num += (xArr[i] - xMean) * (yArr[i] - yMean);
-            denX += (xArr[i] - xMean) ** 2;
-            denY += (yArr[i] - yMean) ** 2;
-        }
-        const r = (denX * denY) > 0 ? num / Math.sqrt(denX * denY) : 0;
-        document.getElementById('ai-corr').innerText = `r = ${r.toFixed(3)}`;
-    }
+    aiCharts.mode.data.labels = times.slice(-15);
+    aiCharts.mode.data.datasets[0].label = modeLabel;
+    aiCharts.mode.data.datasets[0].data = modeData;
+    aiCharts.mode.update();
 
     // ── Update KPI Cards ──
-    const healthScore = ((vScore + iScore + tScore + socScore + sohScore + stabilityScore) / 6).toFixed(0);
+    const healthScore = ((vScore + iScore + tScore + socScore + sohScore + powerFlowScore) / 6).toFixed(0);
     document.getElementById('ai-health-score').innerText = healthScore + '%';
 
     const anomalyEl = document.getElementById('ai-anomaly-risk');
