@@ -24,10 +24,7 @@ let charts = {};
 let gauges = {};
 let history = { v: [], c: [], t: [], s: [], l: [] };
 
-// Simulated State
-let sim = {
-    voltage: 3.9, current: 2.1, temp: 38, soc: 82, soh: 94, rul: 260, fan: false, relay: true
-};
+// All data comes from Supabase — no simulated/random values
 
 // Initialize
 window.onload = () => {
@@ -238,27 +235,54 @@ function mapSupabaseData(row) {
     };
 }
 
-// Fallback to simulation if Supabase fails
+// Fallback: Retry Supabase connection (NO random/simulated data)
 async function mainLoopFallback() {
-    setInterval(async () => {
-        const data = simulate();
-        document.getElementById('conn-text').innerText = "EMULATED STREAM";
-        document.getElementById('connection-status').className = "status-pill simulated";
-        updateUI(data);
-        updateHistory(data);
-        checkAlerts(data);
-    }, CONFIG.POLL_INTERVAL);
-}
+    logEvent('WAITING FOR REAL DATA FROM SUPABASE...', 'warn');
+    document.getElementById('conn-text').innerText = "WAITING FOR DATA";
+    document.getElementById('connection-status').className = "status-pill simulated";
 
-function simulate() {
-    sim.voltage += (Math.random() - 0.5) * 0.08; // More jitter
-    sim.current = 1.0 + Math.random() * 5.5; // More range
-    sim.temp += (Math.random() - 0.5) * 0.8;
-    sim.soc -= 0.05;
-    if (sim.temp > 45) { sim.fan = true; sim.temp -= 0.9; } else sim.fan = false;
-    if (sim.voltage < 3.2) sim.voltage = 3.2;
-    if (sim.voltage > 4.2) sim.voltage = 4.2;
-    return sim;
+    // Retry fetching real data from Supabase every 5 seconds
+    const retryInterval = setInterval(async () => {
+        if (!supabaseClient) return;
+
+        const { data, error } = await supabaseClient
+            .from('battery_data')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(CONFIG.HISTORY_LEN);
+
+        if (!error && data && data.length > 0) {
+            clearInterval(retryInterval);
+            logEvent('CLOUD LINK RE-ESTABLISHED', 'success');
+            document.getElementById('conn-text').innerText = "LIVE (SUPABASE)";
+            document.getElementById('connection-status').className = "status-pill connected";
+
+            // Populate history with real data
+            data.reverse().forEach(row => updateHistory(mapSupabaseData(row)));
+            const latest = mapSupabaseData(data[data.length - 1]);
+            updateUI(latest);
+            checkAlerts(latest);
+
+            // Start real-time listener
+            supabaseClient
+                .channel('battery-updates-retry')
+                .on(
+                    'postgres_changes',
+                    { event: 'INSERT', schema: 'public', table: 'battery_data' },
+                    (payload) => {
+                        const newData = mapSupabaseData(payload.new);
+                        document.getElementById('conn-text').innerText = "LIVE (SUPABASE)";
+                        document.getElementById('connection-status').className = "status-pill connected";
+                        updateUI(newData);
+                        updateHistory(newData);
+                        checkAlerts(newData);
+                    }
+                )
+                .subscribe();
+        } else {
+            logEvent('RETRYING SUPABASE CONNECTION...', 'system');
+        }
+    }, 5000);
 }
 
 // 4. Update Visuals
