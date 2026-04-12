@@ -625,7 +625,7 @@ function runAIAnalytics(allData) {
     const temps = allData.map(d => Number(d.temperature));
     const socs = allData.map(d => Number(d.soc));
     const sohs = allData.map(d => Number(d.soh));
-    const times = allData.map(d => new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    const times = allData.map(d => new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
     // ── 1. SOH Degradation Forecast ──
     const sohLabels = [...times];
