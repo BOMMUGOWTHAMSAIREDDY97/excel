@@ -511,7 +511,10 @@ function initAICharts() {
                 borderWidth: 1
             }
         },
-        layout: { padding: 30 }
+        layout: { padding: 30 },
+        scales: {
+            x: { display: false } // Hide time labels in AI section
+        }
     };
 
     // 1. SOH Degradation Forecast (Line chart with prediction)
@@ -548,7 +551,7 @@ function initAICharts() {
         options: {
             ...aiCommon,
             scales: {
-                x: { display: true, ticks: { color: '#555', font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                x: { display: false },
                 y: { beginAtZero: false, grace: '5%', ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(168,85,247,0.08)' } }
             }
         }
@@ -601,7 +604,7 @@ function initAICharts() {
         options: {
             ...aiCommon,
             scales: {
-                x: { ticks: { color: '#555', font: { size: 9 }, maxTicksLimit: 12 }, grid: { display: false } },
+                x: { display: false },
                 y: { min: 0, ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(168,85,247,0.08)' } }
             }
         }
