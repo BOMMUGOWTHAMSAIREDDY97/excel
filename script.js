@@ -1,6 +1,6 @@
 const CONFIG = {
     POLL_INTERVAL: 1500,
-    HISTORY_LEN: 25,
+    HISTORY_LEN: 200,
     THRESHOLDS: {
         TEMP_WARM: 42,
         TEMP_CRIT: 52,
@@ -46,7 +46,7 @@ function initCharts() {
     const common = {
         responsive: true,
         maintainAspectRatio: false,
-        animation: { duration: 800, easing: 'easeOutQuart' }, // Add smooth animation
+        animation: { duration: 800, easing: 'easeOutQuart' },
         interaction: { mode: 'index', intersect: false },
         plugins: { 
             legend: { display: false },
@@ -57,39 +57,43 @@ function initCharts() {
             }
         },
         scales: {
-            x: { display: false },
+            x: { display: true, ticks: { color: '#555', font: { size: 8 }, maxTicksLimit: 12, maxRotation: 0 }, grid: { display: false } },
             y: { 
                 grid: { color: 'rgba(255,255,255,0.05)' }, 
                 ticks: { color: '#888', font: { size: 9 } },
                 beginAtZero: false,
-                grace: '5%' // Add some breathing room at the top/bottom
+                grace: '15%'
             }
         },
         elements: { 
-            line: { tension: 0.4, borderWidth: 3, fill: true }, 
-            point: { radius: 3, hoverRadius: 6, hitRadius: 10, backgroundColor: '#fff' } 
+            line: { tension: 0.3, borderWidth: 2.5, fill: true }, 
+            point: { radius: 0, hoverRadius: 5, hitRadius: 10 }
         }
     };
 
+    // Voltage: auto-scale to data range (no fixed min/max)
     charts.v = new Chart(document.getElementById('chart-v'), {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'V', borderColor: '#00f2ff', backgroundColor: 'rgba(0, 242, 255, 0.1)', data: [] }] },
-        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, suggestedMin: 3.5, suggestedMax: 4.2 } } }
+        data: { labels: [], datasets: [{ label: 'V', borderColor: '#00f2ff', backgroundColor: 'rgba(0, 242, 255, 0.15)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, grace: '20%' } } }
     });
+    // Current: auto-scale
     charts.c = new Chart(document.getElementById('chart-c'), {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'A', borderColor: '#ffdb29', backgroundColor: 'rgba(255, 219, 41, 0.1)', data: [] }] },
-        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, beginAtZero: true, suggestedMax: 5 } } }
+        data: { labels: [], datasets: [{ label: 'A', borderColor: '#ffdb29', backgroundColor: 'rgba(255, 219, 41, 0.15)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, grace: '20%' } } }
     });
+    // Temperature: auto-scale
     charts.t = new Chart(document.getElementById('chart-t'), {
         type: 'line',
-        data: { labels: [], datasets: [{ label: '°C', borderColor: '#ff3c3c', backgroundColor: 'rgba(255, 60, 60, 0.1)', data: [] }] },
-        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, suggestedMin: 25, suggestedMax: 45 } } }
+        data: { labels: [], datasets: [{ label: '°C', borderColor: '#ff3c3c', backgroundColor: 'rgba(255, 60, 60, 0.15)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, grace: '20%' } } }
     });
+    // SOC: auto-scale (not fixed 0-100 so variations are visible)
     charts.s = new Chart(document.getElementById('chart-s'), {
         type: 'line',
-        data: { labels: [], datasets: [{ label: '%', borderColor: '#00ff8c', backgroundColor: 'rgba(0, 255, 140, 0.1)', data: [] }] },
-        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, min: 0, max: 100 } } }
+        data: { labels: [], datasets: [{ label: '%', borderColor: '#00ff8c', backgroundColor: 'rgba(0, 255, 140, 0.15)', data: [] }] },
+        options: { ...common, scales: { ...common.scales, y: { ...common.scales.y, grace: '20%' } } }
     });
 }
 
@@ -151,7 +155,7 @@ async function initSupabase() {
         .from('battery_data')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(CONFIG.HISTORY_LEN);
+        .limit(200);
 
     clearTimeout(syncTimeout);
 
@@ -182,14 +186,16 @@ async function initSupabase() {
         updateUI(latest);
         checkAlerts(latest);
 
-        // Fetch more data for AI analysis (100 rows)
+        // Fetch more data for AI analysis (500 rows for full variation)
         const { data: aiRawData } = await supabaseClient
             .from('battery_data')
             .select('*')
-            .order('created_at', { ascending: true })
-            .limit(100);
+            .order('created_at', { ascending: false })
+            .limit(500);
         
         if (aiRawData && aiRawData.length > 0) {
+            // Reverse to chronological order (oldest first)
+            aiRawData.reverse();
             logEvent('AI ENGINE: ANALYZING ' + aiRawData.length + ' SAMPLES', 'system');
             runAIAnalytics(aiRawData);
         }
@@ -529,7 +535,7 @@ function initAICharts() {
             ...aiCommon,
             scales: {
                 x: { display: true, ticks: { color: '#555', font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: 'rgba(255,255,255,0.03)' } },
-                y: { min: 80, max: 100, ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(168,85,247,0.08)' } }
+                y: { beginAtZero: false, grace: '5%', ticks: { color: '#888', font: { size: 9 } }, grid: { color: 'rgba(168,85,247,0.08)' } }
             }
         }
     });
