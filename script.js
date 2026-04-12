@@ -624,7 +624,13 @@ function initAICharts() {
                 tension: 0.4
             }]
         },
-        options: aiCommon
+        options: {
+            ...aiCommon,
+            scales: {
+                x: { display: false },
+                y: { min: 0, grace: '10%', ticks: { color: '#888', font: { size: 9 } } }
+            }
+        }
     });
 }
 
@@ -789,8 +795,8 @@ function runAIAnalytics(allData) {
     document.getElementById('ai-rul-pred').innerText = avgRUL + ' cyc';
 
     // Fixed efficiency calculation (replaced stabilityScore with powerFlowScore)
-    const efficiency = Math.min(100, Math.round((latestSOC + latestSOH + powerFlowScore) / 3));
-    document.getElementById('ai-efficiency').innerText = efficiency + '%';
+    const efficiencyValue = Math.round((Number(latestSOC) + Number(latestSOH) + Number(powerFlowScore)) / 3);
+    const efficiency = isNaN(efficiencyValue) ? 0 : Math.min(100, efficiencyValue);
     document.getElementById('ai-efficiency').innerText = efficiency + '%';
 
     statusEl.innerText = `✅ Analysis complete — ${allData.length} samples processed`;
