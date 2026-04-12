@@ -429,6 +429,7 @@ h3 {
     flex-grow: 1;
     position: relative;
     width: 100%;
+    overflow: visible;
 }
 
 .chart-header h4 {
@@ -719,12 +720,12 @@ h3 {
 }
 
 .ai-chart-wide {
-    height: 280px;
+    height: 350px;
     border-color: rgba(138, 43, 226, 0.15);
 }
 
 .ai-chart-square {
-    height: 280px;
+    height: 350px;
     border-color: rgba(6, 182, 212, 0.15);
 }
 

@@ -497,7 +497,8 @@ function initAICharts() {
                 borderColor: 'rgba(168, 85, 247, 0.3)',
                 borderWidth: 1
             }
-        }
+        },
+        layout: { padding: 30 }
     };
 
     // 1. SOH Degradation Forecast (Line chart with prediction)
