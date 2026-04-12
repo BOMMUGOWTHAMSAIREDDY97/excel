@@ -698,7 +698,7 @@ function runAIAnalytics(allData) {
     } else {
         trendDir = '📈 Improving';
     }
-    document.getElementById('ai-soh-trend').innerText = `${trendDir} (${(slope * 100).toFixed(3)}%/sample) | Analyzed ${allData.length} old samples`;
+    document.getElementById('ai-soh-trend').innerText = `${trendDir} | Analyzed ${allData.length} old samples`;
 
     // ── 2. Battery Health Radar (Stability -> Power Flow) ──
     const latestV = voltages[voltages.length - 1];
