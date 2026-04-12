@@ -57,7 +57,7 @@ function initCharts() {
             }
         },
         scales: {
-            x: { display: true, ticks: { color: '#555', font: { size: 8 }, maxTicksLimit: 12, maxRotation: 0 }, grid: { display: false } },
+            x: { display: false },
             y: { 
                 grid: { color: 'rgba(255,255,255,0.05)' }, 
                 ticks: { color: '#888', font: { size: 9 } },
@@ -624,13 +624,7 @@ function initAICharts() {
                 tension: 0.4
             }]
         },
-        options: {
-            ...aiCommon,
-            scales: {
-                x: { display: false },
-                y: { min: 0, grace: '10%', ticks: { color: '#888', font: { size: 9 } } }
-            }
-        }
+        options: aiCommon
     });
 }
 
@@ -795,8 +789,8 @@ function runAIAnalytics(allData) {
     document.getElementById('ai-rul-pred').innerText = avgRUL + ' cyc';
 
     // Fixed efficiency calculation (replaced stabilityScore with powerFlowScore)
-    const efficiencyValue = Math.round((Number(latestSOC) + Number(latestSOH) + Number(powerFlowScore)) / 3);
-    const efficiency = isNaN(efficiencyValue) ? 0 : Math.min(100, efficiencyValue);
+    const efficiency = Math.min(100, Math.round((latestSOC + latestSOH + powerFlowScore) / 3));
+    document.getElementById('ai-efficiency').innerText = efficiency + '%';
     document.getElementById('ai-efficiency').innerText = efficiency + '%';
 
     statusEl.innerText = `✅ Analysis complete — ${allData.length} samples processed`;
