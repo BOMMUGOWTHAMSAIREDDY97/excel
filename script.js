@@ -660,18 +660,19 @@ function runAIAnalytics(allData) {
     const sohActual = [...sohs];
     const sohPredicted = [...sohs];
 
-    // Predict future SOH using linear regression
-    const n = sohs.length;
-    const avgSOH = sohs.reduce((a, b) => a + b, 0) / n;
-    const indices = sohs.map((_, i) => i);
+    // Use only the LAST 30 points for trend (avoids old data contamination)
+    const recentSOH = sohs.slice(-30);
+    const n = recentSOH.length;
+    const avgSOH = recentSOH.reduce((a, b) => a + b, 0) / n;
+    const indices = recentSOH.map((_, i) => i);
     const avgIdx = indices.reduce((a, b) => a + b, 0) / n;
     let slope = 0;
     let denom = 0;
     for (let i = 0; i < n; i++) {
-        slope += (indices[i] - avgIdx) * (sohs[i] - avgSOH);
+        slope += (indices[i] - avgIdx) * (recentSOH[i] - avgSOH);
         denom += (indices[i] - avgIdx) ** 2;
     }
-    slope = denom !== 0 ? slope / denom : -0.01;
+    slope = denom !== 0 ? slope / denom : 0;
     const intercept = avgSOH - slope * avgIdx;
 
     // Add 10 future predictions
@@ -687,7 +688,16 @@ function runAIAnalytics(allData) {
     aiCharts.soh.data.datasets[1].data = sohPredicted;
     aiCharts.soh.update();
 
-    const trendDir = slope >= 0 ? '📈 Stable' : '📉 Degrading';
+    // Threshold: if slope is tiny (<0.05%/sample), show as Stable
+    let trendDir;
+    const slopePercent = Math.abs(slope * 100);
+    if (slopePercent < 0.05) {
+        trendDir = '📈 Stable';
+    } else if (slope < 0) {
+        trendDir = '📉 Degrading';
+    } else {
+        trendDir = '📈 Improving';
+    }
     document.getElementById('ai-soh-trend').innerText = `${trendDir} (${(slope * 100).toFixed(3)}%/sample)`;
 
     // ── 2. Battery Health Radar (Stability -> Power Flow) ──
