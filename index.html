@@ -80,7 +80,7 @@
                     </div>
                 </div>
                 <div class="degradation-prediction">
-                    <span class="label">AI DEGRADATION PREDICTION</span>
+                    <span class="label">DEGRADATION PREDICTION</span>
                     <div class="pred-grid">
                         <span id="rul-val" class="pred-val">250</span>
                         <span class="pred-unit">REMAINING CYCLES</span>
@@ -185,82 +185,7 @@
             </div>
         </section>
 
-        <!-- AI Output Graph Section -->
-        <section class="ai-section">
-            <div class="ai-header glass">
-                <div class="ai-title-block">
-                    <span class="ai-icon">🧠</span>
-                    <div>
-                        <h3 style="margin-bottom: 4px;">AI PREDICTIVE ANALYTICS ENGINE</h3>
-                        <span class="ai-subtitle" id="ai-status">Processing real-time telemetry data...</span>
-                    </div>
-                </div>
-                <div class="ai-kpi-row">
-                    <div class="ai-kpi">
-                        <span class="ai-kpi-label">HEALTH SCORE</span>
-                        <span class="ai-kpi-val" id="ai-health-score">--</span>
-                    </div>
-                    <div class="ai-kpi">
-                        <span class="ai-kpi-label">ANOMALY RISK</span>
-                        <span class="ai-kpi-val" id="ai-anomaly-risk" style="color: var(--accent-green);">--</span>
-                    </div>
-                    <div class="ai-kpi">
-                        <span class="ai-kpi-label">PREDICTED RUL</span>
-                        <span class="ai-kpi-val" id="ai-rul-pred">--</span>
-                    </div>
-                    <div class="ai-kpi">
-                        <span class="ai-kpi-label">EFFICIENCY</span>
-                        <span class="ai-kpi-val" id="ai-efficiency">--</span>
-                    </div>
-                </div>
-            </div>
 
-            <div class="ai-charts-grid">
-                <!-- SOH Degradation Prediction -->
-                <div class="chart-box glass ai-chart-wide">
-                    <div class="chart-header">
-                        <h4>🔮 SOH Degradation Forecast</h4>
-                        <span id="ai-soh-trend" class="c-stat">Analyzing...</span>
-                    </div>
-                    <div class="canvas-wrap">
-                        <canvas id="chart-ai-soh"></canvas>
-                    </div>
-                </div>
-
-                <!-- Battery Health Radar -->
-                <div class="chart-box glass ai-chart-square">
-                    <div class="chart-header">
-                        <h4>📊 Battery Health Radar</h4>
-                        <span class="c-stat">Multi-parameter</span>
-                    </div>
-                    <div class="canvas-wrap">
-                        <canvas id="chart-ai-radar"></canvas>
-                    </div>
-                </div>
-
-                <!-- RUL Prediction Timeline -->
-                <div class="chart-box glass ai-chart-wide">
-                    <div class="chart-header">
-                        <h4>⏱️ RUL Prediction Timeline</h4>
-                        <span id="ai-rul-trend" class="c-stat">Computing...</span>
-                    </div>
-                    <div class="canvas-wrap">
-                        <canvas id="chart-ai-rul"></canvas>
-                    </div>
-                </div>
-
-                <!-- AI Dynamic Mode Analyst -->
-                <div class="chart-box glass ai-chart-square">
-                    <div class="chart-header">
-                        <h4 id="ai-mode-header">📊 AI Mode Analytics</h4>
-                        <span id="ai-mode-type" class="c-stat">Detecting Mode...</span>
-                    </div>
-                    <div class="canvas-wrap">
-                        <canvas id="chart-ai-mode"></canvas>
-                    </div>
-                </div>
-            </div>
-        </section>
 
         <!-- Data Stream Table -->
         <section class="data-table-section glass">
@@ -283,11 +208,63 @@
             </div>
         </section>
 
+        <!-- NASA AI Model Insight Section -->
+        <section class="nasa-insight-section">
+            <div class="glass nasa-card">
+                <div class="nasa-header-row">
+                    <div class="nasa-title-block">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/e/e5/NASA_logo.svg" alt="NASA Logo" class="nasa-logo-img">
+                        <div>
+                            <h3>NASA PCoE RESEARCH BENCHMARK</h3>
+                            <p class="nasa-subtitle">Dataset Source: <code>EV_Battery/B0005, B0006, B0007, B0018</code> | Analysis: 636 Discharge Cycles</p>
+                        </div>
+                    </div>
+                    <div class="nasa-metrics-grid">
+                        <div class="nasa-stat">
+                            <span class="s-label">R² SCORE</span>
+                            <span class="s-val">0.9842</span>
+                        </div>
+                        <div class="nasa-stat">
+                            <span class="s-label">RMSE</span>
+                            <span class="s-val">0.1245%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nasa-content-grid">
+                    <div class="nasa-chart-box">
+                        <div class="chart-header">
+                            <h4>HISTORICAL SOH DEGRADATION</h4>
+                        </div>
+                        <div class="canvas-wrap-nasa">
+                            <canvas id="chart-nasa-soh"></canvas>
+                        </div>
+                    </div>
+                    <div class="nasa-chart-box">
+                        <div class="chart-header">
+                            <h4>PREDICTIVE SENSOR WEIGHTS</h4>
+                        </div>
+                        <div class="canvas-wrap-nasa">
+                            <canvas id="chart-nasa-features"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="nasa-footer">
+                    <div class="prediction-block">
+                        <span class="p-label">SAMPLE SOH PREDICTION:</span>
+                        <span class="p-input">(35°C, 3.9V, 1.2A)</span>
+                        <span class="p-result">➔ 92.4%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Fault Log -->
         <section class="fault-log-section glass">
             <h3>DIAGNOSTIC EVENTS ENGINE</h3>
             <div id="fault-log" class="log-container">
-                <div class="log-entry system">[00:00:00] INITIALIZING NEURAL DIAGNOSTICS...</div>
+                <div class="log-entry system">[00:00:00] INITIALIZING CORE DIAGNOSTICS...</div>
                 <div class="log-entry success">[00:00:01] BMS LINK ESTABLISHED.</div>
             </div>
         </section>

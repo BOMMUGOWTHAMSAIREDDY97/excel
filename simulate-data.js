@@ -5,8 +5,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-async function generateAITestData() {
-    console.log("🚀 Starting AI Dataset Generation...");
+async function generatePredictiveTestData() {
+    console.log("🚀 Starting Dataset Generation...");
     
     const points = 100;
     const dataToPush = [];
@@ -47,9 +47,9 @@ async function generateAITestData() {
     if (error) {
         console.error("❌ Error pushing data:", error.message);
     } else {
-        console.log("✅ AI Dataset successfully updated in Supabase!");
+        console.log("✅ Dataset successfully updated in Supabase!");
         console.log("👉 Refresh your dashboard now to see the new graphs with full UPS and DOWNS.");
     }
 }
 
-generateAITestData();
+generatePredictiveTestData();

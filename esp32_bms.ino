@@ -6,6 +6,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+
 
 // ================= WIFI =================
 const char* ssid = "GOWTHAM";
@@ -182,8 +184,11 @@ void sendToSupabase(float voltage, float current, float temperature, float soc, 
     return;
   }
 
+  WiFiClientSecure client;
+  client.setInsecure(); // No need for SSL certificate validation
+
   HTTPClient http;
-  http.begin(supabaseUrl);
+  http.begin(client, supabaseUrl);
 
   http.addHeader("Content-Type", "application/json");
   http.addHeader("apikey", supabaseKey);
