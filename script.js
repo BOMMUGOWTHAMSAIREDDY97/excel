@@ -191,26 +191,61 @@ async function initSupabase() {
         mainLoopFallback();
     }
 
-    // 2. Subscribe to real-time changes (Unique channel for reliability)
-    const channelId = 'bms-live-' + Math.random().toString(36).substring(7);
-    
-    supabaseClient
-        .channel(channelId)
+    // 2. Realtime Subscription with enhanced status handling
+    const channel = supabaseClient
+        .channel('bms-realtime')
         .on(
             'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'battery_data' },
+            { event: '*', schema: 'public', table: 'battery_data' },
             (payload) => {
-                logEvent('DATA RECEIVED FROM CLOUD', 'success');
-                const newData = mapSupabaseData(payload.new);
-                document.getElementById('conn-text').innerText = "LIVE (SUPABASE)";
-                document.getElementById('connection-status').className = "status-pill connected";
-
+                const newData = mapSupabaseData(payload.new || payload.old);
+                logEvent('REALTIME SYNC: ' + newData.soc.toFixed(1) + '%', 'success');
+                setConnectionStatus('LIVE (REALTIME)', 'connected');
                 updateUI(newData);
                 updateHistory(newData);
                 checkAlerts(newData);
             }
         )
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                logEvent('REALTIME WEBSOCKET: CONNECTED', 'success');
+            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                logEvent('REALTIME DISCONNECTED - USING POLLING FALLBACK', 'warn');
+                setConnectionStatus('LIVE (POLLING)', 'simulated');
+            }
+        });
+
+    // 3. Robust Polling Backup (Runs every 10s as a safety net for Realtime failures)
+    setInterval(async () => {
+        // Only poll if we haven't received a realtime update in the last 15 seconds
+        if (Date.now() - lastUpdateTimestamp > 15000) {
+            const { data, error } = await supabaseClient
+                .from('battery_data')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (data && data.length > 0) {
+                const latest = mapSupabaseData(data[0]);
+                if (latest.created_at !== lastDataId) {
+                    logEvent('BACKUP POLL: NEW DATA SYNCED', 'system');
+                    updateUI(latest);
+                    updateHistory(latest);
+                    setConnectionStatus('LIVE (POLLING)', 'simulated');
+                }
+            }
+        }
+    }, 10000);
+}
+
+let lastUpdateTimestamp = 0;
+let lastDataId = null;
+
+function setConnectionStatus(text, className) {
+    const el = document.getElementById('conn-text');
+    const pill = document.getElementById('connection-status');
+    if (el) el.innerText = text;
+    if (pill) pill.className = `status-pill ${className}`;
 }
 
 // Map database column names to our app's internal names
@@ -295,6 +330,8 @@ async function mainLoopFallback() {
 // 4. Update Visuals
 function updateUI(data) {
   try {
+    lastUpdateTimestamp = Date.now();
+    lastDataId = data.created_at;
     // Guard: ensure numeric fields are numbers
     const volt = Number(data.voltage) || 0;
     const curr = Number(data.current) || 0;
@@ -316,7 +353,26 @@ function updateUI(data) {
     document.getElementById('stat-current').innerText = curr.toFixed(2);
     document.getElementById('stat-power').innerText   = (volt * curr).toFixed(2);
     document.getElementById('stat-temp').innerText    = temp.toFixed(1);
-    document.getElementById('rul-val').innerText      = rul;
+    
+    // Dynamic RUL/Prediction (Using a simple linear degradation model if database isn't providing a dynamic one)
+    const predictedRul = data.rul !== undefined ? data.rul : Math.max(0, Math.floor(250 - (temp > 40 ? (temp - 40) * 2 : 0)));
+    document.getElementById('rul-val').innerText = predictedRul;
+
+    // NASA Predictive Logic (Mocked Random Forest model based on ev_model.py insights)
+    const baseSoh = soh > 0 ? soh : 92.4;
+    const tempPenalty = temp > 40 ? (temp - 40) * 0.05 : 0;
+    const modelPrediction = (baseSoh - tempPenalty).toFixed(2);
+    
+    const nasaInput = document.getElementById('nasa-input');
+    const nasaResult = document.getElementById('nasa-result');
+    if (nasaInput && nasaResult) {
+        nasaInput.innerText = `(${temp.toFixed(1)}°C, ${volt.toFixed(2)}V, ${curr.toFixed(3)}A)`;
+        nasaResult.innerText = `➔ ${modelPrediction}%`;
+    }
+
+    // Dynamic Color for the % sign to match battery health
+    const pcSign = document.querySelector('.pc');
+    if (pcSign) pcSign.style.color = fill.style.backgroundColor;
 
     // Gauges
     document.getElementById('val-v').innerText = volt.toFixed(2);
@@ -377,31 +433,36 @@ function updateHistory(data) {
         Object.keys(history).forEach(k => history[k].shift());
     }
 
-    charts.v.data.labels = history.l;
-    charts.v.data.datasets[0].data = history.v;
-    charts.v.update();
+    // Re-assign arrays to ensure Chart.js change detection
+    charts.v.data.labels = [...history.l];
+    charts.v.data.datasets[0].data = [...history.v];
+    charts.v.update('none'); // Use 'none' for faster updates
 
-    charts.c.data.labels = history.l;
-    charts.c.data.datasets[0].data = history.c;
-    charts.c.update();
+    charts.c.data.labels = [...history.l];
+    charts.c.data.datasets[0].data = [...history.v];
+    charts.c.update('none');
 
-    charts.t.data.labels = history.l;
-    charts.t.data.datasets[0].data = history.t;
-    charts.t.update();
+    charts.t.data.labels = [...history.l];
+    charts.t.data.datasets[0].data = [...history.t];
+    charts.t.update('none');
 
-    charts.s.data.labels = history.l;
-    charts.s.data.datasets[0].data = history.s;
-    charts.s.update();
+    charts.s.data.labels = [...history.l];
+    charts.s.data.datasets[0].data = [...history.s];
+    charts.s.update('none');
 
     // Summary Stats in Chart headers
     if (history.v.length > 0) {
-        document.getElementById('v-avg').innerText = `Avg: ${(history.v.reduce((a, b) => a + b, 0) / history.v.length).toFixed(2)} V`;
-    }
-    if (history.c.length > 0) {
-        document.getElementById('c-peak').innerText = `Peak: ${Math.max(...history.c).toFixed(1)} A`;
-    }
-    if (history.t.length > 0) {
-        document.getElementById('t-max').innerText = `Max: ${Math.max(...history.t).toFixed(1)}°C`;
+        const avgV = history.v.reduce((a, b) => a + b, 0) / history.v.length;
+        const maxC = Math.max(...history.c);
+        const maxT = Math.max(...history.t);
+
+        const vAvgEl = document.getElementById('v-avg');
+        const cPeakEl = document.getElementById('c-peak');
+        const tMaxEl = document.getElementById('t-max');
+
+        if (vAvgEl) vAvgEl.innerText = `Avg: ${avgV.toFixed(2)} V`;
+        if (cPeakEl) cPeakEl.innerText = `Peak: ${maxC.toFixed(1)} A`;
+        if (tMaxEl) tMaxEl.innerText = `Max: ${maxT.toFixed(1)}°C`;
     }
 
     // Populate Data Table
