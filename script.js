@@ -271,7 +271,7 @@ function mapSupabaseData(row) {
         soc:          safeNum(row.soc, 0),
         soh:          safeNum(row.soh, 100),
         rul:          safeNum(row.rul, 250),
-        fan:          tempVal > 45,
+        fan:          tempVal >= 60,
         relay_status: row.relay_status !== undefined && row.relay_status !== null ? row.relay_status : true,
         created_at:   row.created_at
     };
@@ -385,9 +385,11 @@ function updateUI(data) {
     if (data.fan_status || data.fan) {
         fan.classList.add('rotating');
         document.getElementById('fan-status').innerText = "ACTIVE-COOL";
+        document.getElementById('fan-status').style.color = 'var(--accent-green)';
     } else {
         fan.classList.remove('rotating');
         document.getElementById('fan-status').innerText = "STDBY";
+        document.getElementById('fan-status').style.color = '';
     }
 
     const relay = document.getElementById('relay-light');
