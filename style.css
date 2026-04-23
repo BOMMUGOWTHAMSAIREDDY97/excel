@@ -1,15 +1,15 @@
 :root {
-    --bg-color: #010203;
-    --card-bg: linear-gradient(135deg, rgba(20, 24, 33, 0.8), rgba(13, 15, 20, 0.95));
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --text-primary: #f0f0f0;
-    --text-secondary: #7b8ea0;
-    --accent-blue: #00f2ff;
+    --bg-color: #010d0e;
+    --card-bg: linear-gradient(135deg, rgba(0, 40, 40, 0.75), rgba(0, 20, 18, 0.95));
+    --glass-border: rgba(0, 255, 180, 0.12);
+    --text-primary: #e0f7f4;
+    --text-secondary: #5fa897;
+    --accent-blue: #00e5c8;
     --accent-green: #00ff8c;
     --accent-red: #ff3c3c;
     --accent-yellow: #ffdb29;
-    --glow-blue: 0 0 20px rgba(0, 242, 255, 0.2);
-    --glow-green: 0 0 20px rgba(0, 255, 140, 0.2);
+    --glow-blue: 0 0 20px rgba(0, 229, 200, 0.25);
+    --glow-green: 0 0 20px rgba(0, 255, 140, 0.25);
 }
 
 * {
@@ -18,15 +18,24 @@
     box-sizing: border-box;
 }
 
+html {
+    height: 100%;
+}
+
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-color);
-    background-image: url('bg.png');
-    background-size: cover;
-    background-position: center;
+    background-image: 
+        radial-gradient(ellipse at 0% 0%, rgba(0, 80, 60, 0.45) 0px, transparent 55%),
+        radial-gradient(ellipse at 100% 0%, rgba(0, 100, 120, 0.4) 0px, transparent 55%),
+        radial-gradient(ellipse at 50% 50%, rgba(0, 60, 80, 0.3) 0px, transparent 60%),
+        radial-gradient(ellipse at 100% 100%, rgba(0, 80, 60, 0.35) 0px, transparent 55%),
+        radial-gradient(ellipse at 0% 100%, rgba(0, 100, 80, 0.35) 0px, transparent 55%);
+    background-size: 100% 100%;
     background-attachment: fixed;
     color: var(--text-primary);
     min-height: 100vh;
+    margin: 0;
     overflow-x: hidden;
 }
 
@@ -44,9 +53,9 @@ body {
 
 .bg-mesh {
     background-image:
-        radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.8) 100%),
-        linear-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+        radial-gradient(circle at center, transparent 0%, rgba(0, 5, 10, 0.85) 100%),
+        linear-gradient(rgba(0, 229, 180, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 180, 0.06) 1px, transparent 1px);
     background-size: 100% 100%, 60px 60px, 60px 60px;
     z-index: 1;
 }
@@ -67,16 +76,41 @@ body {
 /* Glass UI Elements */
 .glass {
     background: var(--card-bg);
-    backdrop-filter: blur(25px);
+    backdrop-filter: blur(25px) saturate(1.4);
+    -webkit-backdrop-filter: blur(25px) saturate(1.4);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    transition: transform 0.3s ease, border-color 0.3s ease;
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04),
+        inset 0 0 20px rgba(0, 229, 200, 0.02);
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                border-color 0.4s ease,
+                box-shadow 0.4s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.glass::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0, 229, 200, 0.3), transparent);
+    opacity: 0.6;
 }
 
 .glass:hover {
-    border-color: rgba(0, 242, 255, 0.3);
+    border-color: rgba(0, 229, 200, 0.35);
+    transform: translateY(-2px);
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.5),
+        0 0 30px rgba(0, 229, 200, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        inset 0 0 30px rgba(0, 229, 200, 0.03);
 }
 
 /* Layout */
@@ -89,7 +123,9 @@ header {
     z-index: 10;
     position: relative;
     border-bottom: 1px solid var(--glass-border);
-    background: rgba(0, 0, 0, 0.4);
+    background: linear-gradient(180deg, rgba(0, 20, 18, 0.7), rgba(0, 10, 12, 0.5));
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
 }
 
 .brand h1 {
@@ -97,6 +133,10 @@ header {
     font-size: 1.5rem;
     letter-spacing: 3px;
     font-weight: 700;
+    background: linear-gradient(135deg, #e0f7f4, #00e5c8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .brand h1 span {
@@ -205,8 +245,10 @@ h3::before {
     content: '';
     display: inline-block;
     width: 3px;
-    height: 12px;
-    background: var(--accent-blue);
+    height: 14px;
+    background: linear-gradient(180deg, var(--accent-green), var(--accent-blue));
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(0, 229, 200, 0.4);
 }
 
 .vis-card {
@@ -253,7 +295,12 @@ h3::before {
 
 #ev-car-img {
     width: 85%;
-    filter: drop-shadow(0 0 15px rgba(0, 242, 255, 0.2));
+    filter: drop-shadow(0 0 20px rgba(0, 229, 200, 0.25)) drop-shadow(0 0 40px rgba(0, 255, 140, 0.1));
+    transition: filter 0.5s ease;
+}
+
+#ev-car-img:hover {
+    filter: drop-shadow(0 0 25px rgba(0, 229, 200, 0.4)) drop-shadow(0 0 60px rgba(0, 255, 140, 0.15));
 }
 
 .battery-glow-pulse {
@@ -295,9 +342,27 @@ h3::before {
 
 .health-bar {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent-green), #00fffc);
-    box-shadow: 0 0 10px var(--accent-green);
+    background: linear-gradient(90deg, var(--accent-green), #00e5c8, #00fffc);
+    box-shadow: 0 0 12px var(--accent-green), 0 0 4px rgba(0, 229, 200, 0.5);
     transition: width 1s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.health-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: health-shimmer 3s infinite;
+}
+
+@keyframes health-shimmer {
+    0% { left: -100%; }
+    100% { left: 200%; }
 }
 
 /* Battery Fluid Animation */
@@ -494,6 +559,19 @@ h3::before {
     text-align: left;
     display: flex;
     flex-direction: column;
+    position: relative;
+}
+
+.stat-box::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 24px;
+    right: 24px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent-green), var(--accent-blue), transparent);
+    opacity: 0.3;
+    border-radius: 1px;
 }
 
 .stat-box .label {
@@ -506,6 +584,10 @@ h3::before {
     font-family: 'Orbitron', sans-serif;
     font-size: 2rem;
     font-weight: 700;
+    background: linear-gradient(135deg, #e0f7f4, var(--accent-blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 .control-box {
@@ -645,7 +727,8 @@ h3::before {
 }
 
 #data-table tbody tr:hover {
-    background: rgba(0, 242, 255, 0.1);
+    background: rgba(0, 229, 200, 0.08);
+    box-shadow: inset 3px 0 0 var(--accent-blue);
 }
 
 #data-table tbody tr td:first-child {
@@ -779,8 +862,12 @@ h3::before {
 }
 
 .nasa-card {
-    border: 1px solid rgba(0, 242, 255, 0.2);
-    background: linear-gradient(135deg, rgba(10, 15, 25, 0.95), rgba(5, 5, 15, 0.98));
+    border: 1px solid rgba(0, 229, 200, 0.2);
+    background: linear-gradient(135deg, rgba(0, 25, 30, 0.95), rgba(0, 15, 18, 0.98));
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.45),
+        0 0 40px rgba(0, 229, 200, 0.03),
+        inset 0 1px 0 rgba(0, 229, 200, 0.08);
 }
 
 .nasa-header-row {
@@ -830,7 +917,7 @@ h3::before {
     font-family: 'Orbitron', sans-serif;
     font-size: 1.2rem;
     color: var(--accent-blue);
-    text-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+    text-shadow: 0 0 12px rgba(0, 229, 200, 0.35);
 }
 
 .nasa-content-grid {
