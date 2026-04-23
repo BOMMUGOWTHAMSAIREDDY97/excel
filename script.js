@@ -27,6 +27,8 @@ let history = { v: [], c: [], t: [], s: [], l: [] };
 // All data comes from Supabase — no simulated/random values
 
 window.onload = () => {
+    logEvent('INITIALIZING CORE DIAGNOSTICS...', 'system');
+    logEvent('BMS LINK ESTABLISHED.', 'success');
     initCharts();
     initSpeedos();
     initNASACharts(); // Initialize NASA Research section
