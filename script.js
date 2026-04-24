@@ -38,7 +38,13 @@ window.onload = () => {
 
 function startClock() {
     setInterval(() => {
-        document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+        document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
     }, 1000);
 }
 
@@ -418,8 +424,20 @@ function updateUI(data) {
 }
 
 function updateHistory(data) {
-    const dt = data.created_at ? new Date(data.created_at) : new Date();
-    // Explicitly format to IST (Asia/Kolkata)
+    let dt;
+    if (data.created_at) {
+        // Supabase returns UTC timestamps without 'Z' suffix.
+        // Append 'Z' to force the browser to parse it as UTC,
+        // then toLocaleTimeString with timeZone converts correctly to IST.
+        let tsStr = String(data.created_at);
+        if (!tsStr.endsWith('Z') && !tsStr.includes('+')) {
+            tsStr += 'Z';
+        }
+        dt = new Date(tsStr);
+    } else {
+        dt = new Date();
+    }
+    // Format to IST (Asia/Kolkata)
     const time = dt.toLocaleTimeString('en-IN', { 
         timeZone: 'Asia/Kolkata', 
         hour: '2-digit', 
