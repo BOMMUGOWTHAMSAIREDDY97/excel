@@ -137,7 +137,106 @@ function drawSpeedo(config, value, color) {
     ctx.stroke();
 }
 
-// 3. Supabase Integration
+// 3. Supabase Integration & Connection State Management
+const DISCONNECT_THRESHOLD_MS = 25000; // 25s threshold: ESP32 uploads every 10s
+let isDeviceConnected = false;
+let lastPacketTime = 0;
+let lastPacketTimestampStr = null;
+let lastUpdateTimestamp = 0;
+let lastDataId = null;
+let healthCheckTimer = null;
+
+function setConnectionState(connected, latestData = null) {
+    const statusPill = document.getElementById('connection-status');
+    const connText = document.getElementById('conn-text');
+    const offlineBar = document.getElementById('offline-bar');
+    const offlineBarText = document.getElementById('offline-bar-text');
+
+    isDeviceConnected = connected;
+
+    if (connected) {
+        if (statusPill) statusPill.className = 'status-pill connected';
+        if (connText) connText.innerText = 'LIVE CONNECTED';
+        if (offlineBar) offlineBar.classList.remove('active');
+    } else {
+        if (statusPill) statusPill.className = 'status-pill disconnected';
+        const formattedTime = formatTimestamp(lastPacketTimestampStr);
+        if (connText) connText.innerText = 'DISCONNECTED (PREVIOUS DATA)';
+        if (offlineBar) {
+            offlineBar.classList.add('active');
+            if (offlineBarText) {
+                offlineBarText.innerHTML = `<strong>DEVICE DISCONNECTED</strong> — SHOWING PREVIOUS DATA ${formattedTime ? `(LAST RECORD: ${formattedTime})` : ''}`;
+            }
+        }
+    }
+}
+
+function formatTimestamp(ts) {
+    if (!ts) return '';
+    try {
+        let tsStr = String(ts);
+        if (!tsStr.endsWith('Z') && !tsStr.includes('+')) tsStr += 'Z';
+        const d = new Date(tsStr);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+    } catch(e) {
+        return '';
+    }
+}
+
+function getTimestampAgeMs(ts) {
+    if (!ts) return Infinity;
+    try {
+        let tsStr = String(ts);
+        if (!tsStr.endsWith('Z') && !tsStr.includes('+')) tsStr += 'Z';
+        const d = new Date(tsStr);
+        if (isNaN(d.getTime())) return Infinity;
+        return Math.max(0, Date.now() - d.getTime());
+    } catch(e) {
+        return Infinity;
+    }
+}
+
+function startHealthWatchdog() {
+    if (healthCheckTimer) clearInterval(healthCheckTimer);
+    healthCheckTimer = setInterval(() => {
+        if (!lastPacketTime) return;
+        const elapsed = Date.now() - lastPacketTime;
+        if (elapsed > DISCONNECT_THRESHOLD_MS) {
+            if (isDeviceConnected) {
+                logEvent('ESP32 DISCONNECTED - SHOWING PREVIOUS DATA', 'warn');
+                setConnectionState(false);
+            }
+        }
+    }, 2000);
+}
+
+function onFreshDataReceived(newData, source = 'REALTIME') {
+    lastDataId = newData.created_at;
+    lastPacketTimestampStr = newData.created_at;
+    lastPacketTime = Date.now();
+    lastUpdateTimestamp = Date.now();
+
+    const wasDisconnected = !isDeviceConnected;
+    setConnectionState(true, newData);
+
+    if (wasDisconnected) {
+        logEvent('BMS LINK RESTORED: STREAMING LIVE DATA', 'success');
+    } else {
+        logEvent(`DATA SYNC (${source}): ${newData.soc.toFixed(1)}%`, 'success');
+    }
+
+    updateUI(newData);
+    updateHistory(newData);
+    checkAlerts(newData);
+}
+
 async function initSupabase() {
     if (!supabaseClient) {
         console.error("Supabase client not initialized.");
@@ -149,7 +248,6 @@ async function initSupabase() {
     logEvent('SYNCING WITH CLOUD STORAGE...', 'system');
     document.getElementById('conn-text').innerText = "SYNCING...";
     
-    // Set a timeout to prevent hanging if connection is slow
     const syncTimeout = setTimeout(() => {
         if (document.getElementById('conn-text').innerText === "SYNCING...") {
             logEvent('SYNC TIMEOUT - CHECKING BRIDGE...', 'warn');
@@ -178,76 +276,82 @@ async function initSupabase() {
 
     if (data && data.length > 0) {
         logEvent('CLOUD LINK ESTABLISHED', 'success');
-        document.getElementById('conn-text').innerText = "LIVE (SUPABASE)";
-        document.getElementById('connection-status').className = "status-pill connected";
 
-        const latestVal = data[0];
-        if (latestVal.voltage === 0 && latestVal.current === 0) {
+        const latestRaw = data[0]; // Most recent record
+        lastPacketTimestampStr = latestRaw.created_at;
+        const initialAgeMs = getTimestampAgeMs(latestRaw.created_at);
+
+        if (latestRaw.voltage === 0 && latestRaw.current === 0) {
             logEvent('NOTICE: RAW DATA READS 0.0', 'warn');
         }
 
-        // Populate history
+        // Populate history chronologically
         data.reverse().forEach(row => updateHistory(mapSupabaseData(row)));
         
         const latest = mapSupabaseData(data[data.length - 1]);
         updateUI(latest);
         checkAlerts(latest);
 
+        if (initialAgeMs > DISCONNECT_THRESHOLD_MS) {
+            // Hardware ESP32 is currently disconnected; display previous data
+            lastPacketTime = Date.now() - initialAgeMs;
+            setConnectionState(false, latest);
+            logEvent('ESP32 OFFLINE - SHOWING PREVIOUS DATA', 'warn');
+        } else {
+            // Fresh live data
+            lastPacketTime = Date.now();
+            setConnectionState(true, latest);
+            logEvent('ESP32 ONLINE - LIVE DATA STREAMING', 'success');
+        }
+        startHealthWatchdog();
     } else {
         logEvent('REMOTE TABLE EMPTY - WAITING FOR ESP32...', 'warn');
         document.getElementById('conn-text').innerText = "WAITING FOR DATA";
+        document.getElementById('connection-status').className = "status-pill simulated";
         mainLoopFallback();
     }
 
-    // 2. Realtime Subscription with enhanced status handling
-    const channel = supabaseClient
+    // 2. Realtime Subscription with automatic status transition
+    supabaseClient
         .channel('bms-realtime')
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'battery_data' },
             (payload) => {
-                const newData = mapSupabaseData(payload.new || payload.old);
-                logEvent('REALTIME SYNC: ' + newData.soc.toFixed(1) + '%', 'success');
-                setConnectionStatus('LIVE (REALTIME)', 'connected');
-                updateUI(newData);
-                updateHistory(newData);
-                checkAlerts(newData);
+                const raw = payload.new || payload.old;
+                if (!raw) return;
+                const newData = mapSupabaseData(raw);
+                onFreshDataReceived(newData, 'REALTIME');
             }
         )
         .subscribe((status) => {
             if (status === 'SUBSCRIBED') {
-                logEvent('REALTIME WEBSOCKET: CONNECTED', 'success');
+                logEvent('REALTIME WEBSOCKET: CONNECTED', 'system');
             } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-                logEvent('REALTIME DISCONNECTED - USING POLLING FALLBACK', 'warn');
-                setConnectionStatus('LIVE (POLLING)', 'simulated');
+                logEvent('REALTIME SOCKET CLOSED - USING BACKUP POLL', 'warn');
             }
         });
 
-    // 3. Robust Polling Backup (Runs every 10s as a safety net for Realtime failures)
+    // 3. Polling Backup (Runs every 5s to catch new data even if WebSockets fail)
     setInterval(async () => {
-        // Only poll if we haven't received a realtime update in the last 15 seconds
-        if (Date.now() - lastUpdateTimestamp > 15000) {
-            const { data, error } = await supabaseClient
+        try {
+            const { data: pollData } = await supabaseClient
                 .from('battery_data')
                 .select('*')
                 .order('created_at', { ascending: false })
                 .limit(1);
 
-            if (data && data.length > 0) {
-                const latest = mapSupabaseData(data[0]);
+            if (pollData && pollData.length > 0) {
+                const latest = mapSupabaseData(pollData[0]);
                 if (latest.created_at !== lastDataId) {
-                    logEvent('BACKUP POLL: NEW DATA SYNCED', 'system');
-                    updateUI(latest);
-                    updateHistory(latest);
-                    setConnectionStatus('LIVE (POLLING)', 'simulated');
+                    onFreshDataReceived(latest, 'POLL');
                 }
             }
+        } catch(e) {
+            console.warn('Backup poll error:', e);
         }
-    }, 10000);
+    }, 5000);
 }
-
-let lastUpdateTimestamp = 0;
-let lastDataId = null;
 
 function setConnectionStatus(text, className) {
     const el = document.getElementById('conn-text');
@@ -269,7 +373,6 @@ function mapSupabaseData(row) {
             : 25;
 
     const isFault = (tempVal === -127 || tempVal < -50);
-    // if (isFault) tempVal = 0; // Show the actual -127 in UI instead of 0
 
     return {
         voltage:      safeNum(row.voltage, 0),
@@ -285,13 +388,12 @@ function mapSupabaseData(row) {
     };
 }
 
-// Fallback: Retry Supabase connection (NO random/simulated data)
+// Fallback: Retry Supabase connection
 async function mainLoopFallback() {
     logEvent('WAITING FOR REAL DATA FROM SUPABASE...', 'warn');
     document.getElementById('conn-text').innerText = "WAITING FOR DATA";
     document.getElementById('connection-status').className = "status-pill simulated";
 
-    // Retry fetching real data from Supabase every 5 seconds
     const retryInterval = setInterval(async () => {
         if (!supabaseClient) return;
 
@@ -304,14 +406,27 @@ async function mainLoopFallback() {
         if (!error && data && data.length > 0) {
             clearInterval(retryInterval);
             logEvent('CLOUD LINK RE-ESTABLISHED', 'success');
-            document.getElementById('conn-text').innerText = "LIVE (SUPABASE)";
-            document.getElementById('connection-status').className = "status-pill connected";
+
+            const latestRaw = data[0];
+            lastPacketTimestampStr = latestRaw.created_at;
+            const initialAgeMs = getTimestampAgeMs(latestRaw.created_at);
 
             // Populate history with real data
             data.reverse().forEach(row => updateHistory(mapSupabaseData(row)));
             const latest = mapSupabaseData(data[data.length - 1]);
             updateUI(latest);
             checkAlerts(latest);
+
+            if (initialAgeMs > DISCONNECT_THRESHOLD_MS) {
+                lastPacketTime = Date.now() - initialAgeMs;
+                setConnectionState(false, latest);
+                logEvent('ESP32 OFFLINE - SHOWING PREVIOUS DATA', 'warn');
+            } else {
+                lastPacketTime = Date.now();
+                setConnectionState(true, latest);
+                logEvent('ESP32 ONLINE - LIVE DATA STREAMING', 'success');
+            }
+            startHealthWatchdog();
 
             // Start real-time listener
             supabaseClient
@@ -320,12 +435,9 @@ async function mainLoopFallback() {
                     'postgres_changes',
                     { event: 'INSERT', schema: 'public', table: 'battery_data' },
                     (payload) => {
-                        const newData = mapSupabaseData(payload.new);
-                        document.getElementById('conn-text').innerText = "LIVE (SUPABASE)";
-                        document.getElementById('connection-status').className = "status-pill connected";
-                        updateUI(newData);
-                        updateHistory(newData);
-                        checkAlerts(newData);
+                        if (payload.new) {
+                            onFreshDataReceived(mapSupabaseData(payload.new), 'REALTIME');
+                        }
                     }
                 )
                 .subscribe();
@@ -461,7 +573,7 @@ function updateHistory(data) {
     charts.v.update('none'); // Use 'none' for faster updates
 
     charts.c.data.labels = [...history.l];
-    charts.c.data.datasets[0].data = [...history.v];
+    charts.c.data.datasets[0].data = [...history.c];
     charts.c.update('none');
 
     charts.t.data.labels = [...history.l];

@@ -195,6 +195,61 @@ header {
     background: rgba(255, 219, 41, 0.05);
 }
 
+.status-pill.disconnected {
+    border-color: var(--accent-red);
+    color: var(--accent-red);
+    background: rgba(255, 60, 60, 0.1);
+}
+
+.status-pill.disconnected .pulse {
+    background: var(--accent-red);
+    animation: none;
+    opacity: 0.85;
+}
+
+.offline-notice-bar {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 24px;
+    margin: 15px auto 0;
+    max-width: 1700px;
+    width: 90%;
+    background: rgba(255, 60, 60, 0.12);
+    border: 1px solid rgba(255, 60, 60, 0.4);
+    border-radius: 12px;
+    color: #ff9999;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    box-shadow: 0 4px 25px rgba(255, 60, 60, 0.18), inset 0 0 15px rgba(255, 60, 60, 0.08);
+    position: relative;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+    animation: fadeInOffline 0.4s ease-out;
+}
+
+.offline-notice-bar.active {
+    display: flex;
+}
+
+.offline-notice-bar strong {
+    color: #ff4d4d;
+    font-weight: 900;
+}
+
+.offline-notice-bar .offline-icon {
+    font-size: 1.1rem;
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes fadeInOffline {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .pulse {
     width: 8px;
     height: 8px;

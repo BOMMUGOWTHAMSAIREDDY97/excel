@@ -1,4 +1,12 @@
 {
+  "name": "ev-bms-dashboard",
+  "version": "3.0.0",
+  "description": "Futuristic BMS for EV Battery Intelligence",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.0",
     "dotenv": "^17.4.1",
